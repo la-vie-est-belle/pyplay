@@ -50,6 +50,9 @@ class AssetWindow(QWidget):
         self.pathSignal.connect(self.setProjectPath)
         self.projectTreeView.doubleClicked.connect(self.openFile)
 
+        self.contextMenu.newFolderSignal.connect(self.createNewFolder)
+        self.contextMenu.deleteSignal.connect(self.deleteFileOrFolder)
+
     def initLayouts(self):
         hLayout = QHBoxLayout(self)
         hLayout.setContentsMargins(0, 0, 0, 0)
@@ -64,20 +67,47 @@ class AssetWindow(QWidget):
     def setProjectPath(self, path):
         self.projectPath = path
 
+    def createNewFolder(self):
+        folderName, ok = QInputDialog.getText(self, '新建文件夹', '请输入文件夹名称')
+        if not ok:
+            return
+
+        filePath = self.projectDirModel.filePath(self.currentIndex)
+        try:
+            # Create a folder in the root directoryt
+            # Meant to use self.projectDirModel.mkDir(), but it can't catch FileExistsError
+            if not filePath:
+                os.mkdir(os.path.join(self.projectPath, folderName))
+                return
+
+            # Create a folder in the selected directory
+            if os.path.isdir(filePath):
+                os.mkdir(os.path.join(filePath, folderName))
+            else:
+                os.mkdir(os.path.join(os.path.dirname(filePath), f'{folderName}'))
+        except FileExistsError:
+            QMessageBox.critical(self, '错误', '文件夹已存在')
+
+    def deleteFileOrFolder(self):
+        choice = QMessageBox.question(self, '删除', '确定要删除吗？', QMessageBox.Yes | QMessageBox.No)  # 1
+
+        if choice == QMessageBox.Yes:
+            self.projectDirModel.remove(self.currentIndex)
+
     """Events"""
     def contextMenuEvent(self, event):
         index = self.projectTreeView.indexAt(event.pos())
+        self.currentIndex = index
 
         # User clicks on the blank
         if not index.isValid():
             self.contextMenu.execBlankMainMenu(event.globalPos())
             return
 
+        # User clicks on the folder or the file
         filePath = self.projectDirModel.filePath(index)
-        # User clicks on the folder
         if os.path.isdir(filePath):
             self.contextMenu.execFolderMainMenu(event.globalPos())
-        # User clicks on the file
         else:
             self.contextMenu.execFileMainMenu(event.globalPos())
 
@@ -93,9 +123,21 @@ class AssetWindow(QWidget):
 
 
 class ContextMenuForAssetWidnow(QObject):
+    # Signals for Main Menu Actions
+    newFolderSignal = pyqtSignal()
+    renameSignal = pyqtSignal()
+    deleteSignal = pyqtSignal()
+    pasteSignal = pyqtSignal()
+    copySignal = pyqtSignal()
+    cutSignal = pyqtSignal()
+
+    # Signals for Submenu Actions
+    newTxtFileSignal = pyqtSignal()
+    newPythonFileSignal = pyqtSignal()
+    newJsonFileSignal = pyqtSignal()
+
     def __init__(self, parent):
         super(ContextMenuForAssetWidnow, self).__init__(parent=parent)
-        """Menu"""
         # Main Menu
         self.fileMainMenu = QMenu()
         self.folderMainMenu = QMenu()
@@ -105,8 +147,7 @@ class ContextMenuForAssetWidnow(QObject):
         self.newFileSubmenu = QMenu()
         self.newFileSubmenu.setTitle('新建文件')
 
-        """Action"""
-        # Main menu Actions
+        # Main Menu Actions
         self.newFolderAction = QAction('新建文件夹', self)
         self.renameAction = QAction('重命名', self)
         self.deleteAction = QAction('删除', self)
@@ -122,10 +163,19 @@ class ContextMenuForAssetWidnow(QObject):
         self.main()
 
     def main(self):
+        self.initSignals()
         self.addSubmenuActions()
         self.setFileMainMenu()
         self.setFolderMainMenu()
         self.setBlankMainMenu()
+
+    def initSignals(self):
+        self.newFolderAction.triggered.connect(self.newFolderSignal.emit)
+        self.renameAction.triggered.connect(self.renameSignal.emit)
+        self.deleteAction.triggered.connect(self.deleteSignal.emit)
+        self.pasteAction.triggered.connect(self.pasteSignal.emit)
+        self.copyAction.triggered.connect(self.copySignal.emit)
+        self.cutAction.triggered.connect(self.cutSignal.emit)
 
     def addSubmenuActions(self):
         self.newFileSubmenu.addAction(self.newTxtFileAction)
