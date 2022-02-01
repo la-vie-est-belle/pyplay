@@ -16,7 +16,7 @@ class AssetWindow(QWidget):
         self.projectTreeView = QTreeView()
         self.projectDirModel = QFileSystemModel()
         self.projectPath = '/Users/louis/Desktop/pyplay'
-        self.contextMenu = AssetWidnowContextMenu(self)
+        self.contextMenu = ContextMenuForAssetWidnow(self)
 
         self.currentIndex = None
 
@@ -56,7 +56,6 @@ class AssetWindow(QWidget):
         hLayout.addWidget(self.projectTreeView)
 
     """Slots"""
-
     def openFile(self, modelIndex):
         path = self.projectDirModel.filePath(modelIndex)
         if os.path.isfile(path):
@@ -67,25 +66,20 @@ class AssetWindow(QWidget):
 
     """Events"""
     def contextMenuEvent(self, event):
-        self.contextMenu.exec(event.globalPos())
+        index = self.projectTreeView.indexAt(event.pos())
 
-        # index = self.projectTreeView.indexAt(event.pos())
+        # User clicks on the blank
+        if not index.isValid():
+            self.contextMenu.execBlankMainMenu(event.globalPos())
+            return
 
-        # # User clicks on the blank
-        # if not index.isValid():
-        #     self.contextMenu.showContextMenuForBlank(event.globalPos())
-        #     return
-
-        # filePath = self.projectDirModel.filePath(index)
-        # print(filePath)
-        # # User clicks on the folder
-        # if os.path.isdir(filePath):
-        #     print(1)
-        #     self.contextMenu.showContextMenuForFolder(event.globalPos())
-        # # User clicks on the file
-        # else:
-        #     print(2)
-        #     self.contextMenu.showContextMenuForFile(event.globalPos())
+        filePath = self.projectDirModel.filePath(index)
+        # User clicks on the folder
+        if os.path.isdir(filePath):
+            self.contextMenu.execFolderMainMenu(event.globalPos())
+        # User clicks on the file
+        else:
+            self.contextMenu.execFileMainMenu(event.globalPos())
 
     def mousePressEvent(self, event):
         # if event.button() == Qt.RightButton:
@@ -98,19 +92,20 @@ class AssetWindow(QWidget):
         ...
 
 
-class AssetWidnowContextMenu(QMenu):
+class ContextMenuForAssetWidnow(QObject):
     def __init__(self, parent):
-        super(AssetWidnowContextMenu, self).__init__(parent=parent)
-        """Submenu"""
-        self.newFileMenu = QMenu(self)
-        self.newFileMenu.setTitle('新建文件')
+        super(ContextMenuForAssetWidnow, self).__init__(parent=parent)
+        """Menu"""
+        # Main Menu
+        self.fileMainMenu = QMenu()
+        self.folderMainMenu = QMenu()
+        self.blankMainMenu = QMenu()
+
+        # Submenu
+        self.newFileSubmenu = QMenu()
+        self.newFileSubmenu.setTitle('新建文件')
 
         """Action"""
-        # Submenu Actions
-        self.newTxtFileAction = QAction('新建txt文件', self.newFileMenu)
-        self.newPythonFileAction = QAction('新建Py文件', self.newFileMenu)
-        self.newJsonFileAction = QAction('新建JSON文件', self.newFileMenu)
-
         # Main menu Actions
         self.newFolderAction = QAction('新建文件夹', self)
         self.renameAction = QAction('重命名', self)
@@ -119,32 +114,68 @@ class AssetWidnowContextMenu(QMenu):
         self.copyAction = QAction('复制', self)
         self.cutAction = QAction('剪切', self)
 
+        # Submenu Actions
+        self.newTxtFileAction = QAction('新建txt文件', self.newFileSubmenu)
+        self.newPythonFileAction = QAction('新建Py文件', self.newFileSubmenu)
+        self.newJsonFileAction = QAction('新建JSON文件', self.newFileSubmenu)
+
         self.main()
 
     def main(self):
-        self.addSubmenu()
         self.addSubmenuActions()
-        self.addMainMenuActions()
-
-    def addSubmenu(self):
-        self.addMenu(self.newFileMenu)
+        self.setFileMainMenu()
+        self.setFolderMainMenu()
+        self.setBlankMainMenu()
 
     def addSubmenuActions(self):
-        self.newFileMenu.addAction(self.newTxtFileAction)
-        self.newFileMenu.addAction(self.newPythonFileAction)
-        self.newFileMenu.addAction(self.newJsonFileAction)
+        self.newFileSubmenu.addAction(self.newTxtFileAction)
+        self.newFileSubmenu.addAction(self.newPythonFileAction)
+        self.newFileSubmenu.addAction(self.newJsonFileAction)
 
-    def addMainMenuActions(self):
-        self.addAction(self.newFolderAction)
-        self.addAction(self.renameAction)
-        self.addAction(self.deleteAction)
-        self.addAction(self.pasteAction)
-        self.addAction(self.copyAction)
-        self.addAction(self.cutAction)
+    def setFileMainMenu(self):
+        submenuList = [self.newFileSubmenu]
+        actionList = [self.newFolderAction, self.renameAction, self.deleteAction,
+                      self.copyAction, self.pasteAction, self.cutAction]
 
-    def showContextMenu(self):
+        for submenu in submenuList:
+            self.fileMainMenu.addMenu(submenu)
+
+        for action in actionList:
+            self.fileMainMenu.addAction(action)
+
+    def setFolderMainMenu(self):
+        submenuList = [self.newFileSubmenu]
+        actionList = [self.newFolderAction, self.renameAction, self.deleteAction,
+                      self.copyAction, self.pasteAction, self.cutAction]
+
+        for submenu in submenuList:
+            self.folderMainMenu.addMenu(submenu)
+
+        for action in actionList:
+            self.folderMainMenu.addAction(action)
+
+    def setBlankMainMenu(self):
+        submenuList = [self.newFileSubmenu]
+        actionList = [self.newFolderAction, self.copyAction, self.pasteAction]
+
+        for submenu in submenuList:
+            self.blankMainMenu.addMenu(submenu)
+
+        for action in actionList:
+            self.blankMainMenu.addAction(action)
+
+    def execFileMainMenu(self, pos):
         # 在这里检查是否action enabled
-        ...
+        self.folderMainMenu.exec(pos)
+
+    def execFolderMainMenu(self, pos):
+        # 在这里检查是否action enabled
+        self.folderMainMenu.exec(pos)
+
+    def execBlankMainMenu(self, pos):
+        # 在这里检查是否action enabled
+        self.blankMainMenu.exec(pos)
+
 
 
 if __name__ == '__main__':
