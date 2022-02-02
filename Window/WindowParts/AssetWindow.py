@@ -36,7 +36,7 @@ class AssetWindow(QWidget):
         index = self.projectDirModel.setRootPath(self.projectPath)
         self.projectTreeView.setModel(self.projectDirModel)
         self.projectTreeView.setRootIndex(index)
-        self.projectTreeView.setExpandsOnDoubleClick(True)
+        # self.projectTreeView.setEditTriggers(QAbstractItemView.DoubleClicked)
 
         # Only need to show file(folder) name.
         self.projectTreeView.setColumnHidden(1, True)
@@ -46,12 +46,19 @@ class AssetWindow(QWidget):
         # Don't want to show the header.
         self.projectTreeView.setHeaderHidden(True)
 
+        # Double click to edit. Should use this code to make it work.
+        # self.projectDirModel.setReadOnly(False)
+
     def initSignals(self):
         self.pathSignal.connect(self.setProjectPath)
         self.projectTreeView.doubleClicked.connect(self.openFile)
+        self.projectTreeView.clicked.connect(lambda: self.projectDirModel.setReadOnly(True))
 
+        self.contextMenu.openSignal.connect(lambda: self.openFile(self.currentIndex))
         self.contextMenu.newFolderSignal.connect(self.createNewFolder)
+        self.contextMenu.renameSignal.connect(self.rename)
         self.contextMenu.deleteSignal.connect(self.deleteFileOrFolder)
+        self.contextMenu.newFileSignal.connect(self.createNewFile)
 
     def initLayouts(self):
         hLayout = QHBoxLayout(self)
@@ -64,27 +71,51 @@ class AssetWindow(QWidget):
         if os.path.isfile(path):
             print('打开')
 
+        # 获取编辑器的可执行文件路径
+        # 如果没有设置，则抛出提示
+
     def setProjectPath(self, path):
         self.projectPath = path
+
+    def createNewFile(self, ext):
+        fileName, ok = QInputDialog.getText(self, '新建文件夹', '请输入文件夹名称')
+        if not ok:
+            return
+
+        path = self.projectDirModel.filePath(self.currentIndex)
+        if os.path.exists(os.path.join(path, f'{fileName}{ext}')):
+            QMessageBox.critical(self, '错误', '文件已存在')
+            return
+
+        # Create a folder in the root directory
+        if not path:
+            with open(os.path.join(self.projectPath, f'{fileName}{ext}'), 'w'):
+                return
+
+        # Create a folder in the selected directory
+        if os.path.isdir(path):
+            with open(os.path.join(path, f'{fileName}{ext}'), 'w'): ...
+        else:
+            with open(os.path.join(os.path.dirname(path), f'{fileName}{ext}'), 'w'): ...
 
     def createNewFolder(self):
         folderName, ok = QInputDialog.getText(self, '新建文件夹', '请输入文件夹名称')
         if not ok:
             return
 
-        filePath = self.projectDirModel.filePath(self.currentIndex)
+        path = self.projectDirModel.filePath(self.currentIndex)
         try:
-            # Create a folder in the root directoryt
+            # Create a folder in the root directory
             # Meant to use self.projectDirModel.mkDir(), but it can't catch FileExistsError
-            if not filePath:
+            if not path:
                 os.mkdir(os.path.join(self.projectPath, folderName))
                 return
 
             # Create a folder in the selected directory
-            if os.path.isdir(filePath):
-                os.mkdir(os.path.join(filePath, folderName))
+            if os.path.isdir(path):
+                os.mkdir(os.path.join(path, folderName))
             else:
-                os.mkdir(os.path.join(os.path.dirname(filePath), f'{folderName}'))
+                os.mkdir(os.path.join(os.path.dirname(path), f'{folderName}'))
         except FileExistsError:
             QMessageBox.critical(self, '错误', '文件夹已存在')
 
@@ -93,6 +124,10 @@ class AssetWindow(QWidget):
 
         if choice == QMessageBox.Yes:
             self.projectDirModel.remove(self.currentIndex)
+
+    def rename(self):
+        self.projectDirModel.setReadOnly(False)
+        self.projectTreeView.edit(self.currentIndex)
 
     """Events"""
     def contextMenuEvent(self, event):
@@ -124,6 +159,7 @@ class AssetWindow(QWidget):
 
 class ContextMenuForAssetWidnow(QObject):
     # Signals for Main Menu Actions
+    openSignal = pyqtSignal()
     newFolderSignal = pyqtSignal()
     renameSignal = pyqtSignal()
     deleteSignal = pyqtSignal()
@@ -132,9 +168,7 @@ class ContextMenuForAssetWidnow(QObject):
     cutSignal = pyqtSignal()
 
     # Signals for Submenu Actions
-    newTxtFileSignal = pyqtSignal()
-    newPythonFileSignal = pyqtSignal()
-    newJsonFileSignal = pyqtSignal()
+    newFileSignal = pyqtSignal(str)
 
     def __init__(self, parent):
         super(ContextMenuForAssetWidnow, self).__init__(parent=parent)
@@ -148,6 +182,7 @@ class ContextMenuForAssetWidnow(QObject):
         self.newFileSubmenu.setTitle('新建文件')
 
         # Main Menu Actions
+        self.openAction = QAction('打开', self)
         self.newFolderAction = QAction('新建文件夹', self)
         self.renameAction = QAction('重命名', self)
         self.deleteAction = QAction('删除', self)
@@ -170,12 +205,17 @@ class ContextMenuForAssetWidnow(QObject):
         self.setBlankMainMenu()
 
     def initSignals(self):
+        self.openAction.triggered.connect(self.openSignal.emit)
         self.newFolderAction.triggered.connect(self.newFolderSignal.emit)
         self.renameAction.triggered.connect(self.renameSignal.emit)
         self.deleteAction.triggered.connect(self.deleteSignal.emit)
         self.pasteAction.triggered.connect(self.pasteSignal.emit)
         self.copyAction.triggered.connect(self.copySignal.emit)
         self.cutAction.triggered.connect(self.cutSignal.emit)
+
+        self.newTxtFileAction.triggered.connect(lambda: self.newFileSignal.emit('.txt'))
+        self.newPythonFileAction.triggered.connect(lambda: self.newFileSignal.emit('.py'))
+        self.newJsonFileAction.triggered.connect(lambda: self.newFileSignal.emit('.json'))
 
     def addSubmenuActions(self):
         self.newFileSubmenu.addAction(self.newTxtFileAction)
@@ -184,8 +224,8 @@ class ContextMenuForAssetWidnow(QObject):
 
     def setFileMainMenu(self):
         submenuList = [self.newFileSubmenu]
-        actionList = [self.newFolderAction, self.renameAction, self.deleteAction,
-                      self.copyAction, self.pasteAction, self.cutAction]
+        actionList = [self.newFolderAction, self.openAction, self.renameAction,
+                      self.deleteAction, self.copyAction, self.pasteAction, self.cutAction]
 
         for submenu in submenuList:
             self.fileMainMenu.addMenu(submenu)
@@ -216,7 +256,7 @@ class ContextMenuForAssetWidnow(QObject):
 
     def execFileMainMenu(self, pos):
         # 在这里检查是否action enabled
-        self.folderMainMenu.exec(pos)
+        self.fileMainMenu.exec(pos)
 
     def execFolderMainMenu(self, pos):
         # 在这里检查是否action enabled
@@ -225,7 +265,6 @@ class ContextMenuForAssetWidnow(QObject):
     def execBlankMainMenu(self, pos):
         # 在这里检查是否action enabled
         self.blankMainMenu.exec(pos)
-
 
 
 if __name__ == '__main__':
