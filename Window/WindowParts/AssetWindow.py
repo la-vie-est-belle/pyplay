@@ -1,5 +1,7 @@
 import os
 import sys
+import shutil
+from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 
@@ -12,11 +14,11 @@ class AssetWindow(QWidget):
 
     def __init__(self):
         super(QWidget, self).__init__()
-
         self.projectTreeView = QTreeView()
         self.projectDirModel = QFileSystemModel()
         self.projectPath = '/Users/louis/Desktop/pyplay'
-        self.contextMenu = ContextMenuForAssetWidnow(self)
+        self.clipboard = QApplication.clipboard()
+        self.contextMenu = ContextMenuForAssetWindow(self, self.clipboard)
 
         self.currentIndex = None
 
@@ -56,8 +58,11 @@ class AssetWindow(QWidget):
 
         self.contextMenu.openSignal.connect(lambda: self.openFile(self.currentIndex))
         self.contextMenu.newFolderSignal.connect(self.createNewFolder)
-        self.contextMenu.renameSignal.connect(self.rename)
+        self.contextMenu.renameSignal.connect(self.renameFileOrFolder)
         self.contextMenu.deleteSignal.connect(self.deleteFileOrFolder)
+        self.contextMenu.copySignal.connect(self.copyFileOrFolder)
+        self.contextMenu.cutSignal.connect(self.cutFileOrFolder)
+        self.contextMenu.pasteSignal.connect(self.pasteFileOrFolderForCut)
         self.contextMenu.newFileSignal.connect(self.createNewFile)
 
     def initLayouts(self):
@@ -82,40 +87,34 @@ class AssetWindow(QWidget):
         if not ok:
             return
 
-        path = self.projectDirModel.filePath(self.currentIndex)
+        selectedPath = self.projectDirModel.filePath(self.currentIndex)
+        path = selectedPath if selectedPath else self.projectPath
+
         if os.path.exists(os.path.join(path, f'{fileName}{ext}')):
             QMessageBox.critical(self, '错误', '文件已存在')
             return
 
-        # Create a folder in the root directory
-        if not path:
-            with open(os.path.join(self.projectPath, f'{fileName}{ext}'), 'w'):
-                return
-
-        # Create a folder in the selected directory
         if os.path.isdir(path):
             with open(os.path.join(path, f'{fileName}{ext}'), 'w'): ...
         else:
             with open(os.path.join(os.path.dirname(path), f'{fileName}{ext}'), 'w'): ...
+
+        self.update()
 
     def createNewFolder(self):
         folderName, ok = QInputDialog.getText(self, '新建文件夹', '请输入文件夹名称')
         if not ok:
             return
 
-        path = self.projectDirModel.filePath(self.currentIndex)
+        selectedPath = self.projectDirModel.filePath(self.currentIndex)
+        path = selectedPath if selectedPath else self.projectPath
         try:
-            # Create a folder in the root directory
-            # Meant to use self.projectDirModel.mkDir(), but it can't catch FileExistsError
-            if not path:
-                os.mkdir(os.path.join(self.projectPath, folderName))
-                return
-
-            # Create a folder in the selected directory
             if os.path.isdir(path):
                 os.mkdir(os.path.join(path, folderName))
             else:
                 os.mkdir(os.path.join(os.path.dirname(path), f'{folderName}'))
+
+            self.update()
         except FileExistsError:
             QMessageBox.critical(self, '错误', '文件夹已存在')
 
@@ -125,9 +124,38 @@ class AssetWindow(QWidget):
         if choice == QMessageBox.Yes:
             self.projectDirModel.remove(self.currentIndex)
 
-    def rename(self):
+        self.update()
+
+    def renameFileOrFolder(self):
         self.projectDirModel.setReadOnly(False)
         self.projectTreeView.edit(self.currentIndex)
+
+    def copyFileOrFolder(self):
+        path = self.projectDirModel.filePath(self.currentIndex)
+        self.clipboard.setText(path)
+
+    def cutFileOrFolder(self):
+        path = self.projectDirModel.filePath(self.currentIndex)
+        self.clipboard.setText(path)
+
+    def pasteFileOrFolderForCut(self):
+        fileOrFolderPath = self.clipboard.text()
+        fileOrFolderName = os.path.basename(fileOrFolderPath)
+        selectedPath = self.projectDirModel.filePath(self.currentIndex)
+        destPath = selectedPath if selectedPath else self.projectPath
+
+        # Check if the destPath already has a file or a folder with same name.
+        if os.path.exists(os.path.join(destPath, fileOrFolderName)):
+            QMessageBox.critical(self, '错误', '文件（夹）已存在')
+            return
+
+        if os.path.isdir(destPath):
+            shutil.move(fileOrFolderPath, destPath)
+        else:
+            shutil.move(fileOrFolderPath, os.path.dirname(destPath))
+
+        self.update()
+        self.clipboard.clear()
 
     """Events"""
     def contextMenuEvent(self, event):
@@ -156,8 +184,11 @@ class AssetWindow(QWidget):
         #         print(2)
         ...
 
+    def closeEvent(self, event):
+        self.clipboard.clear()
 
-class ContextMenuForAssetWidnow(QObject):
+
+class ContextMenuForAssetWindow(QObject):
     # Signals for Main Menu Actions
     openSignal = pyqtSignal()
     newFolderSignal = pyqtSignal()
@@ -170,8 +201,10 @@ class ContextMenuForAssetWidnow(QObject):
     # Signals for Submenu Actions
     newFileSignal = pyqtSignal(str)
 
-    def __init__(self, parent):
-        super(ContextMenuForAssetWidnow, self).__init__(parent=parent)
+    def __init__(self, parent, clipboard):
+        super(ContextMenuForAssetWindow, self).__init__(parent=parent)
+        self.clipboard = clipboard
+
         # Main Menu
         self.fileMainMenu = QMenu()
         self.folderMainMenu = QMenu()
@@ -255,15 +288,27 @@ class ContextMenuForAssetWidnow(QObject):
             self.blankMainMenu.addAction(action)
 
     def execFileMainMenu(self, pos):
-        # 在这里检查是否action enabled
+        if not self.clipboard.text():
+            self.pasteAction.setEnabled(False)
+        else:
+            self.pasteAction.setEnabled(True)
+
         self.fileMainMenu.exec(pos)
 
     def execFolderMainMenu(self, pos):
-        # 在这里检查是否action enabled
+        if not self.clipboard.text():
+            self.pasteAction.setEnabled(False)
+        else:
+            self.pasteAction.setEnabled(True)
+
         self.folderMainMenu.exec(pos)
 
     def execBlankMainMenu(self, pos):
-        # 在这里检查是否action enabled
+        if not self.clipboard.text():
+            self.pasteAction.setEnabled(False)
+        else:
+            self.pasteAction.setEnabled(True)
+
         self.blankMainMenu.exec(pos)
 
 
