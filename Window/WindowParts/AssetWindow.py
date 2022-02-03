@@ -43,6 +43,7 @@ class AssetWindow(QWidget):
         index = self.projectDirModel.setRootPath(self.projectPath)
         self.projectTreeView.setModel(self.projectDirModel)
         self.projectTreeView.setRootIndex(index)
+        self.projectTreeView.setSelectionMode(QAbstractItemView.ExtendedSelection)
 
         # Only need to show file(folder) name.
         self.projectTreeView.setColumnHidden(1, True)
@@ -120,7 +121,8 @@ class AssetWindow(QWidget):
         choice = QMessageBox.question(self, '删除', '确定要删除吗？', QMessageBox.Yes | QMessageBox.No)  # 1
 
         if choice == QMessageBox.Yes:
-            self.projectDirModel.remove(self.currentIndex)
+            for modeIndex in self.projectTreeView.selectedIndexes():
+                self.projectDirModel.remove(modeIndex)
 
         self.update()
 
@@ -129,47 +131,68 @@ class AssetWindow(QWidget):
         self.projectTreeView.edit(self.currentIndex)
 
     def copy(self):
-        path = self.projectDirModel.filePath(self.currentIndex)
-        self.clipboard.setText(path)
+        urlList = []
+        for modeIndex in self.projectTreeView.selectedIndexes():
+            urlList.append(QUrl(self.projectDirModel.filePath(modeIndex)))
+
+        data = QMimeData()
+        data.setUrls(urlList)
+        self.clipboard.setMimeData(data)
         self.copyOrCut = 'copy'
 
     def cut(self):
-        path = self.projectDirModel.filePath(self.currentIndex)
-        self.clipboard.setText(path)
+        # 完成剪切时的半透明效果
+        urlList = []
+        for modeIndex in self.projectTreeView.selectedIndexes():
+            urlList.append(QUrl(self.projectDirModel.filePath(modeIndex)))
+
+        data = QMimeData()
+        data.setUrls(urlList)
+        self.clipboard.setMimeData(data)
         self.copyOrCut = 'cut'
 
     def paste(self):
-        fileOrFolderPath = self.clipboard.text()
-        print(fileOrFolderPath) # 从其他渠道复制到过来东西不知道路径
-        if not os.path.isfile(fileOrFolderPath) and not os.path.isdir(fileOrFolderPath):
+        data = self.clipboard.mimeData()
+        if not data.urls():
             return
 
-        fileOrFolderName = os.path.basename(fileOrFolderPath)
-        selectedPath = self.projectDirModel.filePath(self.currentIndex)
-        destPath = selectedPath if selectedPath else self.projectPath
-        destPath = destPath if os.path.isdir(destPath) else os.path.dirname(destPath)
+        for url in data.urls():
+            fileOrFolderPath = url.toString().replace('file://', '')
+            fileOrFolderName = os.path.basename(fileOrFolderPath)
 
-        # Check if the file or folder exhists in the destPath.
-        if os.path.exists(os.path.join(destPath, fileOrFolderName)):
-            if os.path.isdir(fileOrFolderPath):
-                QMessageBox.critical(self, '已存在', '该目录下已存在在同名文件夹！', QMessageBox.Ok)
-                return
-            else:
-                choice = QMessageBox.question(self, '文件已存在', '该目录下已存在在同名文件，是否覆盖？', QMessageBox.Yes | QMessageBox.No)  # 1
+            selectedPath = self.projectDirModel.filePath(self.currentIndex)
+            destPath = selectedPath if selectedPath else self.projectPath
+            destPath = destPath if os.path.isdir(destPath) else os.path.dirname(destPath)
 
-                if choice == QMessageBox.No:
-                    return
-
-                if self.copyOrCut == 'cut':
-                    shutil.move(fileOrFolderPath, os.path.join(destPath, fileOrFolderName))
+            # Check if the file or folder exists in the destPath.
+            if os.path.exists(os.path.join(destPath, fileOrFolderName)):
+                if os.path.isdir(fileOrFolderPath):
+                    QMessageBox.critical(self, '已存在', f'该目录下已存在文件夹{fileOrFolderName}！', QMessageBox.Ok)
+                    continue
                 else:
-                    shutil.copyfile(fileOrFolderPath, os.path.join(destPath, fileOrFolderName))
-        else:
-            shutil.move(fileOrFolderPath, destPath)
+                    choice = QMessageBox.question(self, '文件已存在', f'该目录下已存在{fileOrFolderName}，是否覆盖？', QMessageBox.Yes | QMessageBox.No)  # 1
+
+                    if choice == QMessageBox.No:
+                        continue
+
+                    if self.copyOrCut == 'cut':
+                        shutil.move(fileOrFolderPath, os.path.join(destPath, fileOrFolderName))
+                    else:
+                        shutil.copyfile(fileOrFolderPath, os.path.join(destPath, fileOrFolderName))
+            else:
+                if self.copyOrCut == 'cut':
+                    shutil.move(fileOrFolderPath, destPath)
+                else:
+                    if os.path.isdir(fileOrFolderPath):
+                        shutil.copytree(fileOrFolderPath, os.path.join(destPath, fileOrFolderName))
+                    else:
+                        shutil.copyfile(fileOrFolderPath, os.path.join(destPath, fileOrFolderName))
 
         self.update()
+
         if self.copyOrCut == 'cut':
             self.clipboard.clear()
+            self.copyOrCut = None
 
     """Events"""
     def contextMenuEvent(self, event):
@@ -198,8 +221,8 @@ class AssetWindow(QWidget):
         #         print(2)
         ...
 
-    def closeEvent(self, event):
-        self.clipboard.clear()
+    def keyPressEvent(self, event):
+        ...
 
 
 class ContextMenuForAssetWindow(QObject):
