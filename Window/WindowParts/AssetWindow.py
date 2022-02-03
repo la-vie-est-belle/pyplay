@@ -14,6 +14,7 @@ class AssetWindow(QWidget):
 
     def __init__(self):
         super(QWidget, self).__init__()
+        self.searchLine = QLineEdit()
         self.projectTreeView = QTreeView()
         self.projectDirModel = QFileSystemModel()
         self.projectPath = '/Users/louis/Desktop/pyplay'
@@ -21,6 +22,7 @@ class AssetWindow(QWidget):
         self.contextMenu = ContextMenuForAssetWindow(self, self.clipboard)
 
         self.currentIndex = None
+        self.copyOrCut = None
 
         self.main()
 
@@ -34,11 +36,13 @@ class AssetWindow(QWidget):
         self.setWindowTitle('资源管理器')
 
     def initWidgets(self):
+        # Search Line
+        self.searchLine.setPlaceholderText('搜索资源名称')
+
         # Show the current project directory.
         index = self.projectDirModel.setRootPath(self.projectPath)
         self.projectTreeView.setModel(self.projectDirModel)
         self.projectTreeView.setRootIndex(index)
-        # self.projectTreeView.setEditTriggers(QAbstractItemView.DoubleClicked)
 
         # Only need to show file(folder) name.
         self.projectTreeView.setColumnHidden(1, True)
@@ -48,9 +52,6 @@ class AssetWindow(QWidget):
         # Don't want to show the header.
         self.projectTreeView.setHeaderHidden(True)
 
-        # Double click to edit. Should use this code to make it work.
-        # self.projectDirModel.setReadOnly(False)
-
     def initSignals(self):
         self.pathSignal.connect(self.setProjectPath)
         self.projectTreeView.doubleClicked.connect(self.openFile)
@@ -58,17 +59,18 @@ class AssetWindow(QWidget):
 
         self.contextMenu.openSignal.connect(lambda: self.openFile(self.currentIndex))
         self.contextMenu.newFolderSignal.connect(self.createNewFolder)
-        self.contextMenu.renameSignal.connect(self.renameFileOrFolder)
-        self.contextMenu.deleteSignal.connect(self.deleteFileOrFolder)
-        self.contextMenu.copySignal.connect(self.copyFileOrFolder)
-        self.contextMenu.cutSignal.connect(self.cutFileOrFolder)
-        self.contextMenu.pasteSignal.connect(self.pasteFileOrFolderForCut)
+        self.contextMenu.renameSignal.connect(self.rename)
+        self.contextMenu.deleteSignal.connect(self.delete)
+        self.contextMenu.copySignal.connect(self.copy)
+        self.contextMenu.cutSignal.connect(self.cut)
+        self.contextMenu.pasteSignal.connect(self.paste)
         self.contextMenu.newFileSignal.connect(self.createNewFile)
 
     def initLayouts(self):
-        hLayout = QHBoxLayout(self)
-        hLayout.setContentsMargins(0, 0, 0, 0)
-        hLayout.addWidget(self.projectTreeView)
+        vLayout = QVBoxLayout(self)
+        vLayout.setContentsMargins(0, 0, 0, 0)
+        # vLayout.addWidget(self.searchLine)
+        vLayout.addWidget(self.projectTreeView)
 
     """Slots"""
     def openFile(self, modelIndex):
@@ -89,15 +91,14 @@ class AssetWindow(QWidget):
 
         selectedPath = self.projectDirModel.filePath(self.currentIndex)
         path = selectedPath if selectedPath else self.projectPath
+        path = path if os.path.isdir(path) else os.path.dirname(path)
 
         if os.path.exists(os.path.join(path, f'{fileName}{ext}')):
             QMessageBox.critical(self, '错误', '文件已存在')
             return
 
-        if os.path.isdir(path):
-            with open(os.path.join(path, f'{fileName}{ext}'), 'w'): ...
-        else:
-            with open(os.path.join(os.path.dirname(path), f'{fileName}{ext}'), 'w'): ...
+        with open(os.path.join(path, f'{fileName}{ext}'), 'w'):
+            ...
 
         self.update()
 
@@ -108,17 +109,14 @@ class AssetWindow(QWidget):
 
         selectedPath = self.projectDirModel.filePath(self.currentIndex)
         path = selectedPath if selectedPath else self.projectPath
+        path = path if os.path.isdir(path) else os.path.dirname(path)
         try:
-            if os.path.isdir(path):
-                os.mkdir(os.path.join(path, folderName))
-            else:
-                os.mkdir(os.path.join(os.path.dirname(path), f'{folderName}'))
-
+            os.mkdir(os.path.join(path, folderName))
             self.update()
         except FileExistsError:
             QMessageBox.critical(self, '错误', '文件夹已存在')
 
-    def deleteFileOrFolder(self):
+    def delete(self):
         choice = QMessageBox.question(self, '删除', '确定要删除吗？', QMessageBox.Yes | QMessageBox.No)  # 1
 
         if choice == QMessageBox.Yes:
@@ -126,36 +124,52 @@ class AssetWindow(QWidget):
 
         self.update()
 
-    def renameFileOrFolder(self):
+    def rename(self):
         self.projectDirModel.setReadOnly(False)
         self.projectTreeView.edit(self.currentIndex)
 
-    def copyFileOrFolder(self):
+    def copy(self):
         path = self.projectDirModel.filePath(self.currentIndex)
         self.clipboard.setText(path)
+        self.copyOrCut = 'copy'
 
-    def cutFileOrFolder(self):
+    def cut(self):
         path = self.projectDirModel.filePath(self.currentIndex)
         self.clipboard.setText(path)
+        self.copyOrCut = 'cut'
 
-    def pasteFileOrFolderForCut(self):
+    def paste(self):
         fileOrFolderPath = self.clipboard.text()
+        print(fileOrFolderPath) # 从其他渠道复制到过来东西不知道路径
+        if not os.path.isfile(fileOrFolderPath) and not os.path.isdir(fileOrFolderPath):
+            return
+
         fileOrFolderName = os.path.basename(fileOrFolderPath)
         selectedPath = self.projectDirModel.filePath(self.currentIndex)
         destPath = selectedPath if selectedPath else self.projectPath
+        destPath = destPath if os.path.isdir(destPath) else os.path.dirname(destPath)
 
-        # Check if the destPath already has a file or a folder with same name.
+        # Check if the file or folder exhists in the destPath.
         if os.path.exists(os.path.join(destPath, fileOrFolderName)):
-            QMessageBox.critical(self, '错误', '文件（夹）已存在')
-            return
+            if os.path.isdir(fileOrFolderPath):
+                QMessageBox.critical(self, '已存在', '该目录下已存在在同名文件夹！', QMessageBox.Ok)
+                return
+            else:
+                choice = QMessageBox.question(self, '文件已存在', '该目录下已存在在同名文件，是否覆盖？', QMessageBox.Yes | QMessageBox.No)  # 1
 
-        if os.path.isdir(destPath):
-            shutil.move(fileOrFolderPath, destPath)
+                if choice == QMessageBox.No:
+                    return
+
+                if self.copyOrCut == 'cut':
+                    shutil.move(fileOrFolderPath, os.path.join(destPath, fileOrFolderName))
+                else:
+                    shutil.copyfile(fileOrFolderPath, os.path.join(destPath, fileOrFolderName))
         else:
-            shutil.move(fileOrFolderPath, os.path.dirname(destPath))
+            shutil.move(fileOrFolderPath, destPath)
 
         self.update()
-        self.clipboard.clear()
+        if self.copyOrCut == 'cut':
+            self.clipboard.clear()
 
     """Events"""
     def contextMenuEvent(self, event):
