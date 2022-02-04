@@ -6,6 +6,22 @@ from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 
 
+class TreeViewDelegate(QStyledItemDelegate):
+    def __init__(self, cutIndexSet):
+        super(TreeViewDelegate, self).__init__()
+        self.cutIndexSet = cutIndexSet
+
+    def paint(self, painter, option, index):
+        super(TreeViewDelegate, self).paint(painter, option, index)
+        painter.setPen(QColor(0, 105, 217, 128))
+        painter.setBrush(QColor(0, 105, 217, 128))
+
+        for cutIndex in self.cutIndexSet:
+            if index == cutIndex:
+                rect = option.rect
+                painter.drawRect(rect.x()-100, rect.y(), rect.width()+100, rect.height())
+
+
 class AssetWindow(QWidget):
     newFolderSignal = pyqtSignal(str)
     newFileSignal = pyqtSignal(str)
@@ -18,11 +34,14 @@ class AssetWindow(QWidget):
         self.projectTreeView = QTreeView()
         self.projectDirModel = QFileSystemModel()
         self.projectPath = '/Users/louis/Desktop/pyplay'
-        self.clipboard = QApplication.clipboard()
-        self.contextMenu = ContextMenuForAssetWindow(self, self.clipboard)
 
         self.currentIndex = None
         self.copyOrCut = None
+        self.cutIndexSet = set()
+
+        self.clipboard = QApplication.clipboard()
+        self.contextMenu = ContextMenuForAssetWindow(self, self.clipboard)
+        self.treeViewDelegate = TreeViewDelegate(self.cutIndexSet)
 
         self.main()
 
@@ -44,6 +63,7 @@ class AssetWindow(QWidget):
         self.projectTreeView.setModel(self.projectDirModel)
         self.projectTreeView.setRootIndex(index)
         self.projectTreeView.setSelectionMode(QAbstractItemView.ExtendedSelection)
+        self.projectTreeView.setItemDelegate(self.treeViewDelegate)
 
         # Only need to show file(folder) name.
         self.projectTreeView.setColumnHidden(1, True)
@@ -132,8 +152,9 @@ class AssetWindow(QWidget):
 
     def copy(self):
         urlList = []
-        for modeIndex in self.projectTreeView.selectedIndexes():
-            urlList.append(QUrl(self.projectDirModel.filePath(modeIndex)))
+        self.cutIndexSet.clear()
+        for modelIndex in self.projectTreeView.selectedIndexes():
+            urlList.append(QUrl(self.projectDirModel.filePath(modelIndex)))
 
         data = QMimeData()
         data.setUrls(urlList)
@@ -141,10 +162,12 @@ class AssetWindow(QWidget):
         self.copyOrCut = 'copy'
 
     def cut(self):
-        # 完成剪切时的半透明效果
         urlList = []
-        for modeIndex in self.projectTreeView.selectedIndexes():
-            urlList.append(QUrl(self.projectDirModel.filePath(modeIndex)))
+        self.cutIndexSet.clear()
+        for modelIndex in self.projectTreeView.selectedIndexes():
+            urlList.append(QUrl(self.projectDirModel.filePath(modelIndex)))
+            self.cutIndexSet.add(modelIndex)
+        self.projectTreeView.clearSelection()
 
         data = QMimeData()
         data.setUrls(urlList)
@@ -193,6 +216,7 @@ class AssetWindow(QWidget):
         if self.copyOrCut == 'cut':
             self.clipboard.clear()
             self.copyOrCut = None
+            self.cutIndexSet.clear()
 
     """Events"""
     def contextMenuEvent(self, event):
@@ -223,6 +247,20 @@ class AssetWindow(QWidget):
 
     def keyPressEvent(self, event):
         ...
+
+    # def paintEvent(self, event):
+    #     super(AssetWindow, self).paintEvent(event)
+    #     if not self.cutRectList:
+    #         return
+    #
+    #     print(111)
+    #     painter = QPainter(self)
+    #     painter.setPen(QColor(128, 128, 255, 128))
+    #     painter.setBrush(QColor(128, 128, 255, 128))
+    #     for rect in self.cutRectList:
+    #         painter.drawRect(rect)
+    #
+    #     # self.update()
 
 
 class ContextMenuForAssetWindow(QObject):
