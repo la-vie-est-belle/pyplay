@@ -23,6 +23,53 @@ class TreeViewDelegate(QStyledItemDelegate):
                 painter.drawRect(rect.x()-100, rect.y(), rect.width()+100, rect.height())
 
 
+class TreeView(QTreeView):
+    def __init__(self):
+        super(TreeView, self).__init__()
+        self.setDragEnabled(True)
+        self.setAcceptDrops(True)
+        self.setDropIndicatorShown(True)
+
+    def dragEnterEvent(self, event):
+        urlList = []
+        for modelIndex in self.selectedIndexes():
+            urlList.append(QUrl(QFileSystemModel().filePath(modelIndex)))
+
+        event.mimeData().setUrls(urlList)
+        event.acceptProposedAction()
+
+    def dragMoveEvent(self, event):
+        ...
+
+    def dropEvent(self, event):
+        data = event.mimeData()
+        if not data.urls():
+            return
+
+        for url in data.urls():
+            fileOrFolderPath = Path(url.toString().replace('file://', ''))
+            fileOrFolderName = fileOrFolderPath.name
+
+            selectedPath = QFileSystemModel().filePath(self.indexAt(event.pos()))
+            destPath = Path(selectedPath) if selectedPath else Path('/Users/louis/Desktop/pyplay')
+            destPath = destPath if destPath.is_dir() else destPath.parent
+
+            # Check if the file or folder exists in the destPath.
+            if (destPath / fileOrFolderName).exists():
+                if fileOrFolderPath.is_dir():
+                    QMessageBox.critical(self, '已存在', f'该目录下已存在文件夹{fileOrFolderName}！', QMessageBox.Ok)
+                    continue
+                else:
+                    choice = QMessageBox.question(self, '文件已存在', f'该目录下已存在{fileOrFolderName}，是否覆盖？', QMessageBox.Yes | QMessageBox.No)
+                    if choice == QMessageBox.Yes:
+                        fileOrFolderPath.replace((destPath / fileOrFolderName))
+
+            else:
+                fileOrFolderPath.replace((destPath / fileOrFolderName))
+
+        self.update()
+
+
 class AssetWindow(QWidget):
     pathSignal = pyqtSignal(str)
 
@@ -32,7 +79,7 @@ class AssetWindow(QWidget):
         self.searchListView = QListView()
         self.stringListModel = QStringListModel()
 
-        self.projectTreeView = QTreeView()
+        self.projectTreeView = TreeView()
         self.fileSystemModel = QFileSystemModel()
         self.projectPath = '/Users/louis/Desktop/pyplay'
 
@@ -68,8 +115,8 @@ class AssetWindow(QWidget):
         index = self.fileSystemModel.setRootPath(self.projectPath)
         self.projectTreeView.setModel(self.fileSystemModel)
         self.projectTreeView.setRootIndex(index)
-        self.projectTreeView.setSelectionMode(QAbstractItemView.ExtendedSelection)
         self.projectTreeView.setItemDelegate(self.treeViewDelegate)
+        self.projectTreeView.setSelectionMode(QAbstractItemView.ExtendedSelection)
 
         # Only need to show file(folder) name.
         self.projectTreeView.setColumnHidden(1, True)
@@ -260,16 +307,6 @@ class AssetWindow(QWidget):
             self.contextMenu.execFolderMainMenu(event.globalPos())
         else:
             self.contextMenu.execFileMainMenu(event.globalPos())
-
-    def mousePressEvent(self, event):
-        # if event.button() == Qt.RightButton:
-        #     index = self.indexAt(event.pos())
-        #
-        #     if index.isValid():
-        #         print(1)
-        #     else:
-        #         print(2)
-        ...
 
     def keyPressEvent(self, event):
         ...
