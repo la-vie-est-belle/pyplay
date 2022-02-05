@@ -7,89 +7,14 @@ from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 
 
-class TreeViewDelegate(QStyledItemDelegate):
-    def __init__(self, cutIndexSet):
-        super(TreeViewDelegate, self).__init__()
-        self.cutIndexSet = cutIndexSet
-
-    def paint(self, painter, option, index):
-        super(TreeViewDelegate, self).paint(painter, option, index)
-        painter.setPen(QColor(0, 105, 217, 128))
-        painter.setBrush(QColor(0, 105, 217, 128))
-
-        for cutIndex in self.cutIndexSet:
-            if index == cutIndex:
-                rect = option.rect
-                painter.drawRect(rect.x()-100, rect.y(), rect.width()+100, rect.height())
-
-
-class TreeView(QTreeView):
-    def __init__(self):
-        super(TreeView, self).__init__()
-        self.setDragEnabled(True)
-        self.setAcceptDrops(True)
-        self.setDropIndicatorShown(True)
-
-    def dragEnterEvent(self, event):
-        urlList = []
-        for modelIndex in self.selectedIndexes():
-            urlList.append(QUrl(QFileSystemModel().filePath(modelIndex)))
-
-        event.mimeData().setUrls(urlList)
-        event.acceptProposedAction()
-
-    def dragMoveEvent(self, event):
-        ...
-
-    def dropEvent(self, event):
-        data = event.mimeData()
-        if not data.urls():
-            return
-
-        for url in data.urls():
-            fileOrFolderPath = Path(url.toString().replace('file://', ''))
-            fileOrFolderName = fileOrFolderPath.name
-
-            selectedPath = QFileSystemModel().filePath(self.indexAt(event.pos()))
-            destPath = Path(selectedPath) if selectedPath else Path('/Users/louis/Desktop/pyplay')
-            destPath = destPath if destPath.is_dir() else destPath.parent
-
-            # Check if the file or folder exists in the destPath.
-            if (destPath / fileOrFolderName).exists():
-                if fileOrFolderPath.is_dir():
-                    QMessageBox.critical(self, '已存在', f'该目录下已存在文件夹{fileOrFolderName}！', QMessageBox.Ok)
-                    continue
-                else:
-                    choice = QMessageBox.question(self, '文件已存在', f'该目录下已存在{fileOrFolderName}，是否覆盖？', QMessageBox.Yes | QMessageBox.No)
-                    if choice == QMessageBox.Yes:
-                        fileOrFolderPath.replace((destPath / fileOrFolderName))
-
-            else:
-                fileOrFolderPath.replace((destPath / fileOrFolderName))
-
-        self.update()
-
-
 class AssetWindow(QWidget):
     pathSignal = pyqtSignal(str)
 
     def __init__(self):
         super(QWidget, self).__init__()
         self.searchLine = QLineEdit()
-        self.searchListView = QListView()
-        self.stringListModel = QStringListModel()
-
+        self.searchListView = ListView()
         self.projectTreeView = TreeView()
-        self.fileSystemModel = QFileSystemModel()
-        self.projectPath = '/Users/louis/Desktop/pyplay'
-
-        self.currentIndex = None
-        self.copyOrCut = None
-        self.cutIndexSet = set()
-
-        self.clipboard = QApplication.clipboard()
-        self.contextMenu = ContextMenuForAssetWindow(self, self.clipboard)
-        self.treeViewDelegate = TreeViewDelegate(self.cutIndexSet)
 
         self.main()
 
@@ -105,43 +30,12 @@ class AssetWindow(QWidget):
     def initWidgets(self):
         # Search line
         self.searchLine.setPlaceholderText('搜索资源名称')
-
         # List view
         self.searchListView.hide()
-        self.searchListView.setModel(self.stringListModel)
-        self.searchListView.setEditTriggers(QAbstractItemView.NoEditTriggers)
-
-        # Show the current project directory.
-        index = self.fileSystemModel.setRootPath(self.projectPath)
-        self.projectTreeView.setModel(self.fileSystemModel)
-        self.projectTreeView.setRootIndex(index)
-        self.projectTreeView.setItemDelegate(self.treeViewDelegate)
-        self.projectTreeView.setSelectionMode(QAbstractItemView.ExtendedSelection)
-
-        # Only need to show file(folder) name.
-        self.projectTreeView.setColumnHidden(1, True)
-        self.projectTreeView.setColumnHidden(2, True)
-        self.projectTreeView.setColumnHidden(3, True)
-
-        # Don't want to show the header.
-        self.projectTreeView.setHeaderHidden(True)
 
     def initSignals(self):
         self.pathSignal.connect(self.setProjectPath)
-        self.projectTreeView.doubleClicked.connect(self.openFileForTreeView)
-        self.projectTreeView.clicked.connect(lambda: self.fileSystemModel.setReadOnly(True))
-
         self.searchLine.textChanged.connect(self.search)
-        self.searchListView.doubleClicked.connect(self.openFileForListView)
-
-        self.contextMenu.openSignal.connect(lambda: self.openFile(self.currentIndex))
-        self.contextMenu.newFolderSignal.connect(self.createNewFolder)
-        self.contextMenu.renameSignal.connect(self.rename)
-        self.contextMenu.deleteSignal.connect(self.delete)
-        self.contextMenu.copySignal.connect(self.copy)
-        self.contextMenu.cutSignal.connect(self.cut)
-        self.contextMenu.pasteSignal.connect(self.paste)
-        self.contextMenu.newFileSignal.connect(self.createNewFile)
 
     def initLayouts(self):
         vLayout = QVBoxLayout(self)
@@ -152,7 +46,110 @@ class AssetWindow(QWidget):
         vLayout.addWidget(self.projectTreeView)
 
     """Slots"""
-    def openFileForTreeView(self, modelIndex):
+    def setProjectPath(self, path):
+        self.projectTreeView.setProjectPath(path)
+
+    def search(self, s):
+        if s:
+            fileNameList = []
+            it = QDirIterator(self.projectTreeView.projectPath, QDir.Dirs | QDir.NoDotAndDotDot | QDir.Files, QDirIterator.Subdirectories)
+            while it.hasNext():
+                it.next()
+                if Path(it.filePath()).is_file() and re.search(f'{s}', it.fileName(), re.IGNORECASE):
+                    fileNameList.append(it.fileName())
+
+            self.searchListView.stringListModel.setStringList(fileNameList)
+            self.projectTreeView.hide()
+            self.searchListView.show()
+        else:
+            self.searchListView.hide()
+            self.projectTreeView.show()
+
+        self.update()
+
+
+class ListView(QListView):
+    # 加一个List View Delegate用来显示更详细的搜索结果
+    def __init__(self):
+        super(ListView, self).__init__()
+        self.stringListModel = QStringListModel()
+
+        self.main()
+
+    def main(self):
+        self.initWidgets()
+        self.initSignals()
+
+    def initWidgets(self):
+        self.setModel(self.stringListModel)
+        self.setEditTriggers(QAbstractItemView.NoEditTriggers)
+
+    def initSignals(self):
+        self.doubleClicked.connect(self.openFile)
+
+    """Slots"""
+    def openFile(self, modelIndex):
+        print(modelIndex.data())
+
+
+class TreeView(QTreeView):
+    def __init__(self):
+        super(TreeView, self).__init__()
+        self.copyOrCut = None
+        self.currentIndex = None
+        self.cutIndexSet = set()
+        self.projectPath = '/Users/louis/Desktop/pyplay'
+
+        self.fileSystemModel = QFileSystemModel()
+        self.clipboard = QApplication.clipboard()
+        self.contextMenu = ContextMenuForTreeView(self, self.clipboard)
+        self.treeViewDelegate = TreeViewDelegate(self.cutIndexSet)
+
+        self.main()
+
+    def main(self):
+        self.initWindowAttrs()
+        self.initWidgets()
+        self.initSignals()
+
+    def initWindowAttrs(self):
+        self.setDragEnabled(True)
+        self.setAcceptDrops(True)
+        self.setDropIndicatorShown(True)
+
+    def initWidgets(self):
+        # Show the current project directory.
+        index = self.fileSystemModel.setRootPath(self.projectPath)
+        self.setModel(self.fileSystemModel)
+        self.setRootIndex(index)
+        self.setItemDelegate(self.treeViewDelegate)
+        self.setSelectionMode(QAbstractItemView.ExtendedSelection)
+
+        # Only need to show file(folder) name.
+        self.setHeaderHidden(True)
+        self.setColumnHidden(1, True)
+        self.setColumnHidden(2, True)
+        self.setColumnHidden(3, True)
+
+    def initSignals(self):
+        # self.pathSignal.connect(self.setProjectPath)
+        self.doubleClicked.connect(self.openFile)
+        self.clicked.connect(lambda: self.fileSystemModel.setReadOnly(True))
+
+        self.contextMenu.openSignal.connect(lambda: self.openFile(self.currentIndex))
+        self.contextMenu.newFolderSignal.connect(self.createNewFolder)
+        self.contextMenu.renameSignal.connect(self.rename)
+        self.contextMenu.deleteSignal.connect(self.delete)
+        self.contextMenu.copySignal.connect(self.copy)
+        self.contextMenu.cutSignal.connect(self.cut)
+        self.contextMenu.pasteSignal.connect(self.paste)
+        self.contextMenu.newFileSignal.connect(self.createNewFile)
+
+    """Slots"""
+    def setPtrojectPath(self, path):
+        self.fileSystemModel.setRootPath(path)
+
+    def openFile(self, modelIndex):
         path = Path(self.fileSystemModel.filePath(modelIndex))
         if path.is_file():
             print('打开')
@@ -160,17 +157,13 @@ class AssetWindow(QWidget):
         # 获取编辑器的可执行文件路径
         # 如果没有设置，则抛出提示
 
-    def openFileForListView(self, modelIndex):
-        print(modelIndex.data())
-
-    def setProjectPath(self, path):
-        self.projectPath = path
-
     def createNewFile(self, ext):
         fileName, ok = QInputDialog.getText(self, '新建文件夹', '请输入文件夹名称')
         if not ok:
             return
 
+        # If user clicks at the blank area, selectedPath will be None.
+        # This is one way to exec different context menus.
         selectedPath = self.fileSystemModel.filePath(self.currentIndex)
         path = Path(selectedPath) if selectedPath else Path(self.projectPath)
         path = path if path.is_dir() else path.parent
@@ -199,10 +192,10 @@ class AssetWindow(QWidget):
         self.update()
 
     def delete(self):
-        choice = QMessageBox.question(self, '删除', '确定要删除吗？', QMessageBox.Yes | QMessageBox.No)  # 1
+        choice = QMessageBox.question(self, '删除', '确定要删除吗？', QMessageBox.Yes | QMessageBox.No)
 
         if choice == QMessageBox.Yes:
-            for modelIndex in self.projectTreeView.selectedIndexes():
+            for modelIndex in self.selectedIndexes():
                 path = Path(self.fileSystemModel.filePath(modelIndex))
                 path.rmdir() if path.is_dir() else path.unlink()
 
@@ -210,12 +203,12 @@ class AssetWindow(QWidget):
 
     def rename(self):
         self.fileSystemModel.setReadOnly(False)
-        self.projectTreeView.edit(self.currentIndex)
+        self.edit(self.currentIndex)
 
     def copy(self):
         urlList = []
         self.cutIndexSet.clear()
-        for modelIndex in self.projectTreeView.selectedIndexes():
+        for modelIndex in self.selectedIndexes():
             urlList.append(QUrl(self.fileSystemModel.filePath(modelIndex)))
 
         data = QMimeData()
@@ -226,10 +219,10 @@ class AssetWindow(QWidget):
     def cut(self):
         urlList = []
         self.cutIndexSet.clear()
-        for modelIndex in self.projectTreeView.selectedIndexes():
+        for modelIndex in self.selectedIndexes():
             urlList.append(QUrl(self.fileSystemModel.filePath(modelIndex)))
             self.cutIndexSet.add(modelIndex)
-        self.projectTreeView.clearSelection()
+        self.clearSelection()
 
         data = QMimeData()
         data.setUrls(urlList)
@@ -273,27 +266,9 @@ class AssetWindow(QWidget):
             self.copyOrCut = None
             self.cutIndexSet.clear()
 
-    def search(self, s):
-        if s:
-            fileNameList = []
-            it = QDirIterator(self.projectPath, QDir.Dirs | QDir.NoDotAndDotDot | QDir.Files, QDirIterator.Subdirectories)
-            while it.hasNext():
-                it.next()
-                if Path(it.filePath()).is_file() and re.search(f'{s}', it.fileName(), re.IGNORECASE):
-                    fileNameList.append(it.fileName())
-
-            self.stringListModel.setStringList(fileNameList)
-            self.projectTreeView.hide()
-            self.searchListView.show()
-        else:
-            self.searchListView.hide()
-            self.projectTreeView.show()
-
-        self.update()
-
     """Events"""
     def contextMenuEvent(self, event):
-        index = self.projectTreeView.indexAt(event.pos())
+        index = self.indexAt(event.pos())
         self.currentIndex = index
 
         # User clicks on the blank
@@ -308,11 +283,65 @@ class AssetWindow(QWidget):
         else:
             self.contextMenu.execFileMainMenu(event.globalPos())
 
-    def keyPressEvent(self, event):
+    def dragEnterEvent(self, event):
+        urlList = []
+        for modelIndex in self.selectedIndexes():
+            urlList.append(QUrl(QFileSystemModel().filePath(modelIndex)))
+
+        event.mimeData().setUrls(urlList)
+        event.acceptProposedAction()
+
+    def dragMoveEvent(self, event):
         ...
 
+    def dropEvent(self, event):
+        data = event.mimeData()
+        if not data.urls():
+            return
 
-class ContextMenuForAssetWindow(QObject):
+        for url in data.urls():
+            fileOrFolderPath = Path(url.toString().replace('file://', ''))
+            fileOrFolderName = fileOrFolderPath.name
+
+            selectedPath = QFileSystemModel().filePath(self.indexAt(event.pos()))
+            destPath = Path(selectedPath) if selectedPath else Path(self.projectPath)
+            destPath = destPath if destPath.is_dir() else destPath.parent
+
+            # Check if the file or folder exists in the destPath.
+            if (destPath / fileOrFolderName).exists():
+                if fileOrFolderPath.is_dir():
+                    QMessageBox.critical(self, '已存在', f'该目录下已存在文件夹{fileOrFolderName}！', QMessageBox.Ok)
+                    continue
+                else:
+                    choice = QMessageBox.question(self, '文件已存在', f'该目录下已存在{fileOrFolderName}，是否覆盖？', QMessageBox.Yes | QMessageBox.No)
+                    if choice == QMessageBox.Yes:
+                        fileOrFolderPath.replace((destPath / fileOrFolderName))
+
+            else:
+                fileOrFolderPath.replace((destPath / fileOrFolderName))
+
+        self.update()
+
+
+class TreeViewDelegate(QStyledItemDelegate):
+    def __init__(self, cutIndexSet):
+        super(TreeViewDelegate, self).__init__()
+        self.cutIndexSet = cutIndexSet
+        self.pen = QPen(QColor(0, 105, 217, 128))
+        self.brush = QBrush(QColor(0, 105, 217, 128))
+
+    def paint(self, painter, option, index):
+        super(TreeViewDelegate, self).paint(painter, option, index)
+
+        painter.setPen(self.pen)
+        painter.setBrush(self.brush)
+        for cutIndex in self.cutIndexSet:
+            if index == cutIndex:
+                rect = option.rect
+                painter.drawRect(rect.x()-100, rect.y(), rect.width()+100, rect.height())
+
+
+class ContextMenuForTreeView(QObject):
     # Signals for Main Menu Actions
     openSignal = pyqtSignal()
     newFolderSignal = pyqtSignal()
@@ -326,7 +355,7 @@ class ContextMenuForAssetWindow(QObject):
     newFileSignal = pyqtSignal(str)
 
     def __init__(self, parent, clipboard):
-        super(ContextMenuForAssetWindow, self).__init__(parent=parent)
+        super(ContextMenuForTreeView, self).__init__(parent=parent)
         self.clipboard = clipboard
 
         # Main Menu
