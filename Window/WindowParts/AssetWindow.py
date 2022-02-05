@@ -1,3 +1,4 @@
+import re
 import sys
 import shutil
 from pathlib import Path
@@ -28,10 +29,11 @@ class AssetWindow(QWidget):
     def __init__(self):
         super(QWidget, self).__init__()
         self.searchLine = QLineEdit()
-        self.searchResultListView = QListView()
+        self.searchListView = QListView()
+        self.stringListModel = QStringListModel()
 
         self.projectTreeView = QTreeView()
-        self.projectDirModel = QFileSystemModel()
+        self.fileSystemModel = QFileSystemModel()
         self.projectPath = '/Users/louis/Desktop/pyplay'
 
         self.currentIndex = None
@@ -54,20 +56,17 @@ class AssetWindow(QWidget):
         self.setWindowTitle('资源管理器')
 
     def initWidgets(self):
-        # Search Line
+        # Search line
         self.searchLine.setPlaceholderText('搜索资源名称')
 
-        # List View
-        self.searchResultListView.hide()
-        item_list = ['item %s' % i for i in range(110)]  # 1
-        model_1 = QStringListModel(self)
-        model_1.setStringList(item_list)
-        self.searchResultListView.setModel(model_1)
-        self.searchResultListView.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        # List view
+        self.searchListView.hide()
+        self.searchListView.setModel(self.stringListModel)
+        self.searchListView.setEditTriggers(QAbstractItemView.NoEditTriggers)
 
         # Show the current project directory.
-        index = self.projectDirModel.setRootPath(self.projectPath)
-        self.projectTreeView.setModel(self.projectDirModel)
+        index = self.fileSystemModel.setRootPath(self.projectPath)
+        self.projectTreeView.setModel(self.fileSystemModel)
         self.projectTreeView.setRootIndex(index)
         self.projectTreeView.setSelectionMode(QAbstractItemView.ExtendedSelection)
         self.projectTreeView.setItemDelegate(self.treeViewDelegate)
@@ -83,10 +82,10 @@ class AssetWindow(QWidget):
     def initSignals(self):
         self.pathSignal.connect(self.setProjectPath)
         self.projectTreeView.doubleClicked.connect(self.openFileForTreeView)
-        self.projectTreeView.clicked.connect(lambda: self.projectDirModel.setReadOnly(True))
+        self.projectTreeView.clicked.connect(lambda: self.fileSystemModel.setReadOnly(True))
 
         self.searchLine.textChanged.connect(self.search)
-        self.searchResultListView.doubleClicked.connect(self.openFileForListView)
+        self.searchListView.doubleClicked.connect(self.openFileForListView)
 
         self.contextMenu.openSignal.connect(lambda: self.openFile(self.currentIndex))
         self.contextMenu.newFolderSignal.connect(self.createNewFolder)
@@ -102,12 +101,12 @@ class AssetWindow(QWidget):
         vLayout.setSpacing(0)
         vLayout.setContentsMargins(0, 0, 0, 0)
         vLayout.addWidget(self.searchLine)
+        vLayout.addWidget(self.searchListView)
         vLayout.addWidget(self.projectTreeView)
-        vLayout.addWidget(self.searchResultListView)
 
     """Slots"""
     def openFileForTreeView(self, modelIndex):
-        path = Path(self.projectDirModel.filePath(modelIndex))
+        path = Path(self.fileSystemModel.filePath(modelIndex))
         if path.is_file():
             print('打开')
 
@@ -115,7 +114,7 @@ class AssetWindow(QWidget):
         # 如果没有设置，则抛出提示
 
     def openFileForListView(self, modelIndex):
-        print('打开')
+        print(modelIndex.data())
 
     def setProjectPath(self, path):
         self.projectPath = path
@@ -125,7 +124,7 @@ class AssetWindow(QWidget):
         if not ok:
             return
 
-        selectedPath = self.projectDirModel.filePath(self.currentIndex)
+        selectedPath = self.fileSystemModel.filePath(self.currentIndex)
         path = Path(selectedPath) if selectedPath else Path(self.projectPath)
         path = path if path.is_dir() else path.parent
 
@@ -141,7 +140,7 @@ class AssetWindow(QWidget):
         if not ok:
             return
 
-        selectedPath = self.projectDirModel.filePath(self.currentIndex)
+        selectedPath = self.fileSystemModel.filePath(self.currentIndex)
         path = Path(selectedPath) if selectedPath else Path(self.projectPath)
         path = path if path.is_dir() else path.parent
 
@@ -157,22 +156,20 @@ class AssetWindow(QWidget):
 
         if choice == QMessageBox.Yes:
             for modelIndex in self.projectTreeView.selectedIndexes():
-                # pathlib uses rmdir and unlink to delete. Can use PyQt5 API to delete.
-                path = Path(self.projectDirModel.filePath(modelIndex))
+                path = Path(self.fileSystemModel.filePath(modelIndex))
                 path.rmdir() if path.is_dir() else path.unlink()
-                # self.projectDirModel.remove(modeIndex)
 
         self.update()
 
     def rename(self):
-        self.projectDirModel.setReadOnly(False)
+        self.fileSystemModel.setReadOnly(False)
         self.projectTreeView.edit(self.currentIndex)
 
     def copy(self):
         urlList = []
         self.cutIndexSet.clear()
         for modelIndex in self.projectTreeView.selectedIndexes():
-            urlList.append(QUrl(self.projectDirModel.filePath(modelIndex)))
+            urlList.append(QUrl(self.fileSystemModel.filePath(modelIndex)))
 
         data = QMimeData()
         data.setUrls(urlList)
@@ -183,7 +180,7 @@ class AssetWindow(QWidget):
         urlList = []
         self.cutIndexSet.clear()
         for modelIndex in self.projectTreeView.selectedIndexes():
-            urlList.append(QUrl(self.projectDirModel.filePath(modelIndex)))
+            urlList.append(QUrl(self.fileSystemModel.filePath(modelIndex)))
             self.cutIndexSet.add(modelIndex)
         self.projectTreeView.clearSelection()
 
@@ -201,7 +198,7 @@ class AssetWindow(QWidget):
             fileOrFolderPath = Path(url.toString().replace('file://', ''))
             fileOrFolderName = fileOrFolderPath.name
 
-            selectedPath = self.projectDirModel.filePath(self.currentIndex)
+            selectedPath = self.fileSystemModel.filePath(self.currentIndex)
             destPath = Path(selectedPath) if selectedPath else Path(self.projectPath)
             destPath = destPath if destPath.is_dir() else destPath.parent
 
@@ -231,10 +228,18 @@ class AssetWindow(QWidget):
 
     def search(self, s):
         if s:
-            self.searchResultListView.show()
+            fileNameList = []
+            it = QDirIterator(self.projectPath, QDir.Dirs | QDir.NoDotAndDotDot | QDir.Files, QDirIterator.Subdirectories)
+            while it.hasNext():
+                it.next()
+                if Path(it.filePath()).is_file() and re.search(f'{s}', it.fileName(), re.IGNORECASE):
+                    fileNameList.append(it.fileName())
+
+            self.stringListModel.setStringList(fileNameList)
             self.projectTreeView.hide()
+            self.searchListView.show()
         else:
-            self.searchResultListView.hide()
+            self.searchListView.hide()
             self.projectTreeView.show()
 
         self.update()
@@ -250,7 +255,7 @@ class AssetWindow(QWidget):
             return
 
         # User clicks on the folder or the file
-        path = Path(self.projectDirModel.filePath(index))
+        path = Path(self.fileSystemModel.filePath(index))
         if path.is_dir():
             self.contextMenu.execFolderMainMenu(event.globalPos())
         else:
