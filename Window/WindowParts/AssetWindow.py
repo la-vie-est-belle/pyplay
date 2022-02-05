@@ -268,16 +268,15 @@ class TreeView(QTreeView):
 
     """Events"""
     def contextMenuEvent(self, event):
-        index = self.indexAt(event.pos())
-        self.currentIndex = index
+        self.currentIndex = self.indexAt(event.pos())
 
         # User clicks on the blank
-        if not index.isValid():
+        if not self.currentIndex.isValid():
             self.contextMenu.execBlankMainMenu(event.globalPos())
             return
 
         # User clicks on the folder or the file
-        path = Path(self.fileSystemModel.filePath(index))
+        path = Path(self.fileSystemModel.filePath(self.currentIndex))
         if path.is_dir():
             self.contextMenu.execFolderMainMenu(event.globalPos())
         else:
