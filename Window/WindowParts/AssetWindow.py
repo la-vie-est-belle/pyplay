@@ -96,7 +96,7 @@ class TreeView(QTreeView):
     def __init__(self):
         super(TreeView, self).__init__()
         self.copyOrCut = None
-        self.currentIndex = None
+        self.clickedIndex = None
         self.cutIndexSet = set()
         self.projectPath = '/Users/louis/Desktop/pyplay'
 
@@ -116,6 +116,7 @@ class TreeView(QTreeView):
         self.setDragEnabled(True)
         self.setAcceptDrops(True)
         self.setDropIndicatorShown(True)
+        self.setSelectionMode(QAbstractItemView.ExtendedSelection)
 
     def initWidgets(self):
         # Show the current project directory.
@@ -123,7 +124,6 @@ class TreeView(QTreeView):
         self.setModel(self.fileSystemModel)
         self.setRootIndex(index)
         self.setItemDelegate(self.treeViewDelegate)
-        self.setSelectionMode(QAbstractItemView.ExtendedSelection)
 
         # Only need to show file(folder) name.
         self.setHeaderHidden(True)
@@ -136,7 +136,7 @@ class TreeView(QTreeView):
         self.doubleClicked.connect(self.openFile)
         self.clicked.connect(lambda: self.fileSystemModel.setReadOnly(True))
 
-        self.contextMenu.openSignal.connect(lambda: self.openFile(self.currentIndex))
+        self.contextMenu.openSignal.connect(lambda: self.openFile(self.clickedIndex))
         self.contextMenu.newFolderSignal.connect(self.createNewFolder)
         self.contextMenu.renameSignal.connect(self.rename)
         self.contextMenu.deleteSignal.connect(self.delete)
@@ -164,7 +164,7 @@ class TreeView(QTreeView):
 
         # If user clicks at the blank area, selectedPath will be None.
         # This is one way to exec different context menus.
-        selectedPath = self.fileSystemModel.filePath(self.currentIndex)
+        selectedPath = self.fileSystemModel.filePath(self.clickedIndex)
         path = Path(selectedPath) if selectedPath else Path(self.projectPath)
         path = path if path.is_dir() else path.parent
 
@@ -180,7 +180,7 @@ class TreeView(QTreeView):
         if not ok:
             return
 
-        selectedPath = self.fileSystemModel.filePath(self.currentIndex)
+        selectedPath = self.fileSystemModel.filePath(self.clickedIndex)
         path = Path(selectedPath) if selectedPath else Path(self.projectPath)
         path = path if path.is_dir() else path.parent
 
@@ -203,7 +203,7 @@ class TreeView(QTreeView):
 
     def rename(self):
         self.fileSystemModel.setReadOnly(False)
-        self.edit(self.currentIndex)
+        self.edit(self.clickedIndex)
 
     def copy(self):
         urlList = []
@@ -238,7 +238,7 @@ class TreeView(QTreeView):
             fileOrFolderPath = Path(url.toString().replace('file://', ''))
             fileOrFolderName = fileOrFolderPath.name
 
-            selectedPath = self.fileSystemModel.filePath(self.currentIndex)
+            selectedPath = self.fileSystemModel.filePath(self.clickedIndex)
             destPath = Path(selectedPath) if selectedPath else Path(self.projectPath)
             destPath = destPath if destPath.is_dir() else destPath.parent
 
@@ -268,15 +268,15 @@ class TreeView(QTreeView):
 
     """Events"""
     def contextMenuEvent(self, event):
-        self.currentIndex = self.indexAt(event.pos())
+        self.clickedIndex = self.indexAt(event.pos())
 
         # User clicks on the blank
-        if not self.currentIndex.isValid():
+        if not self.clickedIndex.isValid():
             self.contextMenu.execBlankMainMenu(event.globalPos())
             return
 
         # User clicks on the folder or the file
-        path = Path(self.fileSystemModel.filePath(self.currentIndex))
+        path = Path(self.fileSystemModel.filePath(self.clickedIndex))
         if path.is_dir():
             self.contextMenu.execFolderMainMenu(event.globalPos())
         else:
@@ -431,7 +431,7 @@ class ContextMenuForTreeView(QObject):
 
     def setBlankMainMenu(self):
         submenuList = [self.newFileSubmenu]
-        actionList = [self.newFolderAction, self.copyAction, self.pasteAction]
+        actionList = [self.newFolderAction, self.pasteAction]
 
         for submenu in submenuList:
             self.blankMainMenu.addMenu(submenu)
