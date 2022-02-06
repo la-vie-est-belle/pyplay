@@ -45,42 +45,61 @@ class ConsoleWindow(QWidget):
 
     """Slots"""
     def search(self, s):
-        if s:
-            # 将原本的html保存起来，替换为[[]]，高亮显示后，将html代码复原
-            # print(self.browser.toPlainText())
-            # print(self.browser.toHtml())
-            # print(len(re.findall(f'{s}', self.browser.toPlainText(), re.IGNORECASE)))
-            # values = self.browser.toPlainText().split(s)
-            # newContent = f'<span style="background:yellow">{s}</span>'.join(values)
-            # self.browser.setHtml(newContent)
+        contentBackup = self.browser.contentBackup
+        if contentBackup:
+            self.browser.setHtml(contentBackup)
+
+        if s.strip():
+            html = self.browser.toHtml()
+            lines = html.split('\n')
+
+            matchList = []
+            for line in lines[4:]:
+                result = re.sub('(<p.*">)|(</span></p>)|(</body></html>)', '', line)
+                if re.search(f'{s}', result, re.IGNORECASE):
+                    matchList.append(line)
+
+            if len(matchList):
+                self.browser.setHtml(''.join(matchList))
+            else:
+                self.browser.setHtml('')
 
 
 class Browser(QTextBrowser):
     def __init__(self):
         super(Browser, self).__init__()
-        self.main()
-        for i in range(20):
-            self.addInfo('asdsdsad')
+        self.contentBackup = ''
+
+        self.addInfo('asdsdsad')
         self.addWarning('asdasdasd')
         self.addError('adsdsad')
+
+        self.main()
 
     def main(self):
         self.initWindowAttrs()
 
     def initWindowAttrs(self):
-        ...
+        self.setPlaceholderText('日志输出窗口')
 
     def addInfo(self, info):
-        self.append(f'<p style="color:black"><span style="font-weight:bold">INFO:</span> {info}</p>')
+        self.append(f'<span style="color:black">INFO: {info}</span>')
+        self.contentBackup = self.toHtml()
         self.moveCursor(QTextCursor.End)
 
     def addWarning(self, warning):
-        self.append(f'<p style="color:rgb(219, 207, 76)"><span style="font-weight:bold">WARNING:</span> {warning}</p>')
+        self.append(f'<span style="color:rgb(219, 207, 76)">WARN: {warning}</span>')
+        self.contentBackup = self.toHtml()
         self.moveCursor(QTextCursor.End)
 
     def addError(self, error):
-        self.append(f'<p style="color:red"><span style="font-weight:bold">ERROR:</span> {error}</p>')
+        self.append(f'<span style="color:red">ERROR: {error}</span>')
+        self.contentBackup = self.toHtml()
         self.moveCursor(QTextCursor.End)
+
+    def clear(self):
+        super(Browser, self).clear()
+        self.contentBackup = ''
 
 
 if __name__ == '__main__':
