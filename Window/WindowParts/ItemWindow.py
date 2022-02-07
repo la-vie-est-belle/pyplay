@@ -10,19 +10,25 @@ class ItemWindow(QWidget):
         super(ItemWindow, self).__init__()
         self.searchLine = QLineEdit()
         self.itemTreeView = TreeView()
+        self.searchListView = ListView()
 
         self.main()
 
     def main(self):
+        self.initWindowAttrs()
         self.initWidgets()
         self.initSignals()
         self.initLayouts()
 
+    def initWindowAttrs(self):
+        self.setWindowTitle('层级窗口')
+
     def initWidgets(self):
         self.searchLine.setPlaceholderText('搜索项')
+        self.searchListView.hide()
 
     def initSignals(self):
-        ...
+        self.searchLine.textChanged.connect(self.search)
 
     def initLayouts(self):
         vLayout = QVBoxLayout(self)
@@ -30,6 +36,42 @@ class ItemWindow(QWidget):
         vLayout.setContentsMargins(0, 0, 0, 0)
         vLayout.addWidget(self.searchLine)
         vLayout.addWidget(self.itemTreeView)
+        vLayout.addWidget(self.searchListView)
+
+    """Slots"""
+    def search(self, s):
+        s = s.strip()
+        searchResult = []
+        if s:
+            treeViewStandardItemModel = self.itemTreeView.standardItemModel
+            for row in range(treeViewStandardItemModel.rowCount()):
+                item = treeViewStandardItemModel.item(row, 0)
+                if re.search(f'{s}', item.text(), re.I):
+                    searchResult.append(item)
+                self.searchRecursively(s, searchResult, item)
+
+            listViewStandardItemModel = self.searchListView.standardItemModel
+            listViewStandardItemModel.setRowCount(0)
+            for item in searchResult:
+                listViewStandardItemModel.appendRow(QStandardItem(item))    # 如果是实例化的话，考虑下后面点击显示属性窗口会不会有问题
+
+            self.itemTreeView.hide()
+            self.searchListView.show()
+
+        else:
+            self.searchListView.hide()
+            self.itemTreeView.show()
+
+    def searchRecursively(self, keyword, storageList, parentItem):
+        if parentItem.hasChildren():
+            for i in range(500):
+                childItem = parentItem.child(i, 0)
+                if childItem:
+                    if re.search(f'{keyword}', childItem.text(), re.IGNORECASE):
+                        storageList.append(childItem)
+                    self.searchRecursively(keyword, storageList, childItem)
+                else:
+                    break
 
 
 class TreeView(QTreeView):
@@ -37,13 +79,13 @@ class TreeView(QTreeView):
         super(TreeView, self).__init__()
         self.standardItemModel = QStandardItemModel()
         self.allItems = []
-        self.clickedIndex = None
         self.copyOrCut = None
-        self.copyOrCutItemIndexList = []
-        self.copyOrCutItemIndexDict = {}
+        self.clickedIndex = None
         self.cutIndexSet = set()
+        self.dragItemIndexDict = {}
+        self.copyOrCutItemIndexDict = {}
 
-        self.contextMenu = ContextMenuForTreeView(self, self.copyOrCutItemIndexList)
+        self.contextMenu = ContextMenuForTreeView(self, self.copyOrCutItemIndexDict)
         self.treeViewDelegate = TreeViewDelegate(self.cutIndexSet)
 
         self.main()
@@ -55,6 +97,9 @@ class TreeView(QTreeView):
 
     def initWindowAttrs(self):
         self.setHeaderHidden(True)
+        self.setDragEnabled(True)
+        self.setAcceptDrops(True)
+        self.setDropIndicatorShown(True)
         self.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.setSelectionMode(QAbstractItemView.ExtendedSelection)
 
@@ -101,8 +146,9 @@ class TreeView(QTreeView):
         self.copyOrCutItemIndexDict.clear()
 
         for modelIndex in self.selectedIndexes():
+            print(modelIndex)
             parentItem = self.standardItemModel.itemFromIndex(modelIndex)
-            self.getItemChildrenRecursively(modelIndex, parentItem)
+            self.getItemChildrenRecursively(self.copyOrCutItemIndexDict, modelIndex, parentItem)
 
         self.copyOrCut = 'copy'
 
@@ -112,38 +158,45 @@ class TreeView(QTreeView):
 
         for modelIndex in self.selectedIndexes():
             parentItem = self.standardItemModel.itemFromIndex(modelIndex)
-            self.getItemChildrenRecursively(modelIndex, parentItem)
+            self.getItemChildrenRecursively(self.copyOrCutItemIndexDict, modelIndex, parentItem)
             self.cutIndexSet.add(modelIndex)
 
         self.copyOrCut = 'cut'
 
-    def getItemChildrenRecursively(self, modelIndex, parentItem):
+    def getItemChildrenRecursively(self, itemStorageDict, modelIndex, parentItem):
+        itemStorageDict[modelIndex] = []
+
         if parentItem.hasChildren():
-            self.copyOrCutItemIndexDict[modelIndex] = []
             for i in range(500):
                 childItem = parentItem.child(i, 0)
                 if childItem:
                     childIndex = parentItem.child(i, 0).index()
-                    self.copyOrCutItemIndexDict[modelIndex].append(childIndex)
-                    self.getItemChildrenRecursively(childIndex, childItem)
+                    itemStorageDict[modelIndex].append(childIndex)
+                    self.getItemChildrenRecursively(itemStorageDict, childIndex, childItem)
                 else:
                     break
 
     def paste(self):
         if self.clickedIndex.isValid():
+            # The parent item can not be cut to its children.
+            if self.copyOrCut == 'cut':
+                for parentModelIndex, childModelIndexList in self.copyOrCutItemIndexDict.items():
+                    if self.clickedIndex in childModelIndexList:
+                        return
+
             currentClickItem = self.standardItemModel.itemFromIndex(self.clickedIndex)
             for parentModelIndex, childModelIndexList in self.copyOrCutItemIndexDict.items():
                 parentItem = QStandardItem(self.standardItemModel.itemFromIndex(parentModelIndex))
                 currentClickItem.appendRow(parentItem)
                 if childModelIndexList:
-                    self.pasteItemRecdursively(parentItem, childModelIndexList)
+                    self.pasteItemRecdursively(self.copyOrCutItemIndexDict, parentItem, childModelIndexList)
                 break
         else:
             for parentModelIndex, childModelIndexList in self.copyOrCutItemIndexDict.items():
                 parentItem = QStandardItem(self.standardItemModel.itemFromIndex(parentModelIndex))
                 self.standardItemModel.appendRow(parentItem)
                 if childModelIndexList:
-                    self.pasteItemRecdursively(parentItem, childModelIndexList)
+                    self.pasteItemRecdursively(self.copyOrCutItemIndexDict, parentItem, childModelIndexList)
                 break
 
         if self.copyOrCut == 'cut':
@@ -153,17 +206,18 @@ class TreeView(QTreeView):
                     item.parent().removeRow(item.row())
                 else:
                     self.standardItemModel.removeRow(item.row())
+                break
 
             self.copyOrCut = None
             self.cutIndexSet.clear()
             self.copyOrCutItemIndexDict.clear()
 
-    def pasteItemRecdursively(self, parentItem, childModelIndexList):
+    def pasteItemRecdursively(self, itemStorageDict, parentItem, childModelIndexList):
         for childModelIndex in childModelIndexList:
             childItem = QStandardItem(self.standardItemModel.itemFromIndex(childModelIndex))
             parentItem.appendRow(childItem)
-            if self.copyOrCutItemIndexDict.get(childModelIndex):
-                self.pasteItemRecdursively(childItem, self.copyOrCutItemIndexDict[childModelIndex])
+            if itemStorageDict.get(childModelIndex):
+                self.pasteItemRecdursively(itemStorageDict, childItem, itemStorageDict[childModelIndex])
 
     def createNewItem(self, itemName):
         if itemName == 'QLabel':
@@ -183,6 +237,52 @@ class TreeView(QTreeView):
         else:
             self.contextMenu.execBlankMainMenu(event.globalPos())
 
+    def dragEnterEvent(self, event):
+        self.dragItemIndexDict = {}
+        for modelIndex in self.selectedIndexes():
+            parentItem = self.standardItemModel.itemFromIndex(modelIndex)
+            self.getItemChildrenRecursively(self.dragItemIndexDict, modelIndex, parentItem)
+
+        event.acceptProposedAction()
+
+    def dragMoveEvent(self, event):
+        ...
+
+    def dropEvent(self, event):
+        if not self.dragItemIndexDict:
+            return
+
+        index = self.indexAt(event.pos())
+        if index.isValid():
+            for parentModelIndex, childModelIndexList in self.dragItemIndexDict.items():
+                if index in childModelIndexList:
+                    return
+
+            targetItem = self.standardItemModel.itemFromIndex(index)
+            for parentModelIndex, childModelIndexList in self.dragItemIndexDict.items():
+                parentItem = QStandardItem(self.standardItemModel.itemFromIndex(parentModelIndex))
+                targetItem.appendRow(parentItem)
+                if childModelIndexList:
+                    self.pasteItemRecdursively(self.dragItemIndexDict, parentItem, childModelIndexList)
+                break
+        else:
+            for parentModelIndex, childModelIndexList in self.dragItemIndexDict.items():
+                parentItem = QStandardItem(self.standardItemModel.itemFromIndex(parentModelIndex))
+                self.standardItemModel.appendRow(parentItem)
+                if childModelIndexList:
+                    self.pasteItemRecdursively(self.dragItemIndexDict, parentItem, childModelIndexList)
+                break
+
+        for parentModelIndex in self.dragItemIndexDict.keys():
+                item = self.standardItemModel.itemFromIndex(parentModelIndex)
+                if item.parent():
+                    item.parent().removeRow(item.row())
+                else:
+                    self.standardItemModel.removeRow(item.row())
+                break
+
+        self.dragItemIndexDict.clear()
+
 
 class TreeViewDelegate(QStyledItemDelegate):
     def __init__(self, cutIndexSet):
@@ -201,9 +301,31 @@ class TreeViewDelegate(QStyledItemDelegate):
                 rect = option.rect
                 painter.drawRect(rect.x()-100, rect.y(), rect.width()+100, rect.height())
 
+
 class ListView(QListView):
     def __init__(self):
         super(ListView, self).__init__()
+        self.standardItemModel = QStandardItemModel()
+
+        self.main()
+
+    def main(self):
+        self.initWindowAttrs()
+        self.initWidgets()
+        self.initSignals()
+
+    def initWindowAttrs(self):
+        self.setModel(self.standardItemModel)
+        self.setEditTriggers(QAbstractItemView.NoEditTriggers)
+
+    def initWidgets(self):
+        ...
+
+    def initSignals(self):
+        self.clicked.connect(self.showProperty)
+
+    def showProperty(self, index):
+        print(index.data())
 
 
 class ContextMenuForTreeView(QObject):
@@ -217,9 +339,9 @@ class ContextMenuForTreeView(QObject):
     # Signals for Submenu Actions
     newItemSignal = pyqtSignal(str)
 
-    def __init__(self, parent, copyOrCutItemIndexList):
+    def __init__(self, parent, copyOrCutItemIndexDict):
         super(ContextMenuForTreeView, self).__init__(parent=parent)
-        self.copyOrCutItemIndexList = copyOrCutItemIndexList
+        self.copyOrCutItemIndexDict = copyOrCutItemIndexDict
 
         # Main Menu
         self.itemMainMenu = QMenu()
@@ -286,18 +408,18 @@ class ContextMenuForTreeView(QObject):
             self.blankMainMenu.addAction(action)
 
     def execItemMainMenu(self, pos):
-        # if not self.copyOrCutItemIndexList:
-        #     self.pasteAction.setEnabled(False)
-        # else:
-        #     self.pasteAction.setEnabled(True)
+        if not self.copyOrCutItemIndexDict:
+            self.pasteAction.setEnabled(False)
+        else:
+            self.pasteAction.setEnabled(True)
 
         self.itemMainMenu.exec(pos)
 
     def execBlankMainMenu(self, pos):
-        # if not self.copyOrCutItemIndexList:
-        #     self.pasteAction.setEnabled(False)
-        # else:
-        #     self.pasteAction.setEnabled(True)
+        if not self.copyOrCutItemIndexDict:
+            self.pasteAction.setEnabled(False)
+        else:
+            self.pasteAction.setEnabled(True)
 
         self.blankMainMenu.exec(pos)
 

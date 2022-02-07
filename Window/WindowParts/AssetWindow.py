@@ -302,7 +302,7 @@ class TreeView(QTreeView):
             fileOrFolderPath = Path(url.toString().replace('file://', ''))
             fileOrFolderName = fileOrFolderPath.name
 
-            selectedPath = QFileSystemModel().filePath(self.indexAt(event.pos()))
+            selectedPath = self.fileSystemModel.filePath(self.indexAt(event.pos()))
             destPath = Path(selectedPath) if selectedPath else Path(self.projectPath)
             destPath = destPath if destPath.is_dir() else destPath.parent
 
