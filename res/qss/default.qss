@@ -1,0 +1,7 @@
+QTabWidget::tab-bar{
+    alignment: left;
+}
+
+QTabWidget::pane {
+    background-color: rgba(0, 0, 0, 0);
+}
