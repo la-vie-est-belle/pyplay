@@ -6,6 +6,7 @@ from PyQt5.QtWidgets import *
 from WindowParts.ItemWindow import ItemWindow
 from WindowParts.AssetWindow import AssetWindow
 from WindowParts.ConsoleWindow import ConsoleWindow
+from WindowParts.SceneWindow import SceneWindow
 
 
 class PlayWindow(QMainWindow):
@@ -34,6 +35,7 @@ class PlayWindow(QMainWindow):
     def main(self):
         self.initWindowAttrs()
         self.initWidgets()
+        self.initSignals()
         self.initLayouts()
 
     def initWindowAttrs(self):
@@ -44,7 +46,7 @@ class PlayWindow(QMainWindow):
     def initWidgets(self):
         self.itemWindow = ItemWindow()
         self.assetWindow = AssetWindow()
-        self.sceneWindow = QWidget()
+        self.sceneWindow = SceneWindow()
         self.consoleWindow = ConsoleWindow()
         self.propertyWindow = QWidget()
 
@@ -72,7 +74,7 @@ class PlayWindow(QMainWindow):
         self.allSplitter.setSizes([300, 800, 300])
 
     def initSignals(self):
-        ...
+        self.itemWindow.addSignal.connect(self.sceneWindow.add)
 
     def initLayouts(self):
         hLayout = QHBoxLayout()

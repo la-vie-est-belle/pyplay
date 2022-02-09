@@ -6,11 +6,13 @@ from PyQt5.QtWidgets import *
 
 
 class ItemWindow(QWidget):
+    addSignal = pyqtSignal(str)
+
     def __init__(self):
         super(ItemWindow, self).__init__()
         self.searchLine = QLineEdit()
-        self.itemTreeView = TreeView()
         self.searchListView = ListView()
+        self.itemTreeView = TreeView(self)
 
         self.main()
 
@@ -74,9 +76,36 @@ class ItemWindow(QWidget):
                     break
 
 
-class TreeView(QTreeView):
+class ListView(QListView):
     def __init__(self):
+        super(ListView, self).__init__()
+        self.standardItemModel = QStandardItemModel()
+
+        self.main()
+
+    def main(self):
+        self.initWindowAttrs()
+        self.initWidgets()
+        self.initSignals()
+
+    def initWindowAttrs(self):
+        self.setModel(self.standardItemModel)
+        self.setEditTriggers(QAbstractItemView.NoEditTriggers)
+
+    def initWidgets(self):
+        ...
+
+    def initSignals(self):
+        self.clicked.connect(self.showProperty)
+
+    def showProperty(self, index):
+        print(index.data())
+
+
+class TreeView(QTreeView):
+    def __init__(self, parentWindow):
         super(TreeView, self).__init__()
+        self.parentWindow = parentWindow
         self.standardItemModel = QStandardItemModel()
         self.allItems = []
         self.copyOrCut = None
@@ -124,7 +153,7 @@ class TreeView(QTreeView):
         self.contextMenu.copySignal.connect(self.copy)
         self.contextMenu.cutSignal.connect(self.cut)
         self.contextMenu.pasteSignal.connect(self.paste)
-        self.contextMenu.newItemSignal.connect(self.createNewItem)
+        self.contextMenu.newItemSignal.connect(self.addNewItem)
 
     """Slots"""
     def showProperty(self, modelIndex):
@@ -219,13 +248,9 @@ class TreeView(QTreeView):
             if itemStorageDict.get(childModelIndex):
                 self.pasteItemRecdursively(itemStorageDict, childItem, itemStorageDict[childModelIndex])
 
-    def createNewItem(self, itemName):
-        if itemName == 'QLabel':
-            ...
-        elif itemName == 'QPushButton':
-            ...
-        elif itemName == 'QLineEdit':
-            ...
+    def addNewItem(self, itemName):
+        if itemName == 'Label':
+            self.parentWindow.addSignal.emit('Label')
 
     """Events"""
     def contextMenuEvent(self, event):
@@ -302,32 +327,6 @@ class TreeViewDelegate(QStyledItemDelegate):
                 painter.drawRect(rect.x()-100, rect.y(), rect.width()+100, rect.height())
 
 
-class ListView(QListView):
-    def __init__(self):
-        super(ListView, self).__init__()
-        self.standardItemModel = QStandardItemModel()
-
-        self.main()
-
-    def main(self):
-        self.initWindowAttrs()
-        self.initWidgets()
-        self.initSignals()
-
-    def initWindowAttrs(self):
-        self.setModel(self.standardItemModel)
-        self.setEditTriggers(QAbstractItemView.NoEditTriggers)
-
-    def initWidgets(self):
-        ...
-
-    def initSignals(self):
-        self.clicked.connect(self.showProperty)
-
-    def showProperty(self, index):
-        print(index.data())
-
-
 class ContextMenuForTreeView(QObject):
     # Signals for Main Menu Actions
     renameSignal = pyqtSignal()
@@ -360,7 +359,7 @@ class ContextMenuForTreeView(QObject):
 
         # Submenu Actions
         self.newLabelAction = QAction('Label', self.newItemSubmenu)
-        self.newButtonAction = QAction('Button', self.newItemSubmenu)
+        self.newButtonAction = QAction('Sprite', self.newItemSubmenu)
         self.newLineEditAction = QAction('LineEdit', self.newItemSubmenu)
 
         self.main()
@@ -378,9 +377,9 @@ class ContextMenuForTreeView(QObject):
         self.copyAction.triggered.connect(self.copySignal.emit)
         self.cutAction.triggered.connect(self.cutSignal.emit)
 
-        self.newLabelAction.triggered.connect(lambda: self.newItemSignal.emit('QLabel'))
-        self.newButtonAction.triggered.connect(lambda: self.newItemSignal.emit('QPushButton'))
-        self.newLineEditAction.triggered.connect(lambda: self.newItemSignal.emit('QLineEdit'))
+        self.newLabelAction.triggered.connect(lambda: self.newItemSignal.emit('Label'))
+        self.newButtonAction.triggered.connect(lambda: self.newItemSignal.emit('Sprite'))
+        self.newLineEditAction.triggered.connect(lambda: self.newItemSignal.emit('LineEdit'))
 
     def addSubmenuActions(self):
         self.newItemSubmenu.addAction(self.newLabelAction)
