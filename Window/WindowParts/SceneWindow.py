@@ -10,7 +10,6 @@ class SceneWindow(QGraphicsView):
     def __init__(self):
         super(SceneWindow, self).__init__()
         self.scene = QGraphicsScene()
-        # self.scene.setSceneRect(0, 0, 200, 200)
         self.setScene(self.scene)
 
     def main(self):

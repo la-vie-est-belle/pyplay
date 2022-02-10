@@ -7,19 +7,29 @@ from PyQt5.QtWidgets import *
 class Label(QGraphicsTextItem):
     def __init__(self):
         super(Label, self).__init__()
+        self.contextMenu = ContextMenuForLabel()
         self.main()
 
     def main(self):
         self.initItemAttrs()
+        self.initSignals()
 
     def initItemAttrs(self):
         self.setFlags(QGraphicsItem.ItemIsSelectable | QGraphicsItem.ItemIsMovable)
+
+    def initSignals(self):
+        self.contextMenu.deleteSignal.connect(self.delete)
 
     def moveCursorToEnd(self):
         cursor = self.textCursor()
         cursor.setPosition(len(self.toPlainText()))
         self.setTextCursor(cursor)
 
+    """Slots"""
+    def delete(self):
+        self.deleteLater()
+
+    """Events"""
     def mouseDoubleClickEvent(self, event):
         super(Label, self).mouseDoubleClickEvent(event)
         self.setTextInteractionFlags(Qt.TextEditorInteraction)
@@ -35,4 +45,28 @@ class Label(QGraphicsTextItem):
         self.moveCursorToEnd()
 
     def contextMenuEvent(self, event):
-        ...
+        self.contextMenu.execMainMenu(event.screenPos())
+
+
+class ContextMenuForLabel(QObject):
+    deleteSignal = pyqtSignal()
+
+    def __init__(self):
+        super(ContextMenuForLabel, self).__init__()
+        self.mainMenu = QMenu()
+        self.deleteAction = QAction('删除', self.mainMenu)
+
+        self.main()
+
+    def main(self):
+        self.initSignals()
+        self.setMainMenu()
+
+    def initSignals(self):
+        self.deleteAction.triggered.connect(self.deleteSignal.emit)
+
+    def setMainMenu(self):
+        self.mainMenu.addAction(self.deleteAction)
+
+    def execMainMenu(self, pos):
+        self.mainMenu.exec(pos)

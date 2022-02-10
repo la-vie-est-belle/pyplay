@@ -358,9 +358,12 @@ class ContextMenuForTreeView(QObject):
         self.cutAction = QAction('剪切', self)
 
         # Submenu Actions
+        self.newButtonAction = QAction('Button', self.newItemSubmenu)
         self.newLabelAction = QAction('Label', self.newItemSubmenu)
-        self.newButtonAction = QAction('Sprite', self.newItemSubmenu)
         self.newLineEditAction = QAction('LineEdit', self.newItemSubmenu)
+        self.newPageViewAction = QAction('PageView', self.newItemSubmenu)
+        self.newSliderAction = QAction('Slider', self.newItemSubmenu)
+        self.newSpriteAction = QAction('Sprite', self.newItemSubmenu)
 
         self.main()
 
@@ -377,14 +380,20 @@ class ContextMenuForTreeView(QObject):
         self.copyAction.triggered.connect(self.copySignal.emit)
         self.cutAction.triggered.connect(self.cutSignal.emit)
 
+        self.newButtonAction.triggered.connect(lambda: self.newItemSignal.emit('Button'))
         self.newLabelAction.triggered.connect(lambda: self.newItemSignal.emit('Label'))
-        self.newButtonAction.triggered.connect(lambda: self.newItemSignal.emit('Sprite'))
         self.newLineEditAction.triggered.connect(lambda: self.newItemSignal.emit('LineEdit'))
+        self.newPageViewAction.triggered.connect(lambda: self.newItemSignal.emit('PageView'))
+        self.newSliderAction.triggered.connect(lambda: self.newItemSignal.emit('Slider'))
+        self.newSpriteAction.triggered.connect(lambda: self.newItemSignal.emit('Sprite'))
 
     def addSubmenuActions(self):
-        self.newItemSubmenu.addAction(self.newLabelAction)
         self.newItemSubmenu.addAction(self.newButtonAction)
+        self.newItemSubmenu.addAction(self.newLabelAction)
         self.newItemSubmenu.addAction(self.newLineEditAction)
+        self.newItemSubmenu.addAction(self.newPageViewAction)
+        self.newItemSubmenu.addAction(self.newSliderAction)
+        self.newItemSubmenu.addAction(self.newSpriteAction)
 
     def setItemMainMenu(self):
         submenuList = [self.newItemSubmenu]
