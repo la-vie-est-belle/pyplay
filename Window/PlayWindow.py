@@ -55,9 +55,6 @@ class PlayWindow(QMainWindow):
         self.centerTopTab.addTab(self.sceneWindow, '场景窗口')
         self.centerBottomTab.addTab(self.consoleWindow, '日志窗口')
         self.rightTab.addTab(self.propertyWindow, '属性窗口')
-        # self.leftTopTab.setAutoFillBackground(True)
-        # self.leftTopTab.setAttribute(Qt.WA_TranslucentBackground)
-        # self.leftTopTab.setWindowFlag(Qt.FramelessWindowHint)
 
         self.leftSplitter.addWidget(self.leftTopTab)
         self.leftSplitter.addWidget(self.leftBottomTab)

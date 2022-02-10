@@ -133,17 +133,12 @@ class TreeView(QTreeView):
         self.setSelectionMode(QAbstractItemView.ExtendedSelection)
 
     def initWidgets(self):
-        # 新建场景默认有一个Canvas
+        # Scene item is by default.
         sceneItem = QStandardItem('Scene')
         self.standardItemModel.appendRow(sceneItem)
-        item2 = QStandardItem('item')
-        item3 = QStandardItem('item')
-        sceneItem.appendRow(item2)
-        item2.appendRow(item3)
+
         self.setModel(self.standardItemModel)
         self.setItemDelegate(self.treeViewDelegate)
-
-        # print(self.standardItemModel.findItems('Camera', flags=Qt.MatchContains))
 
     def initSignals(self):
         self.clicked.connect(self.showProperty)
@@ -163,12 +158,15 @@ class TreeView(QTreeView):
         self.edit(self.clickedIndex)
 
     def delete(self):
-        for modelIndex in self.selectedIndexes():
-            item = self.standardItemModel.itemFromIndex(modelIndex)
-            if item.parent():
-                item.parent().removeRow(item.row())
-            else:
-                self.standardItemModel.removeRow(item.row())
+        choice = QMessageBox.question(self, '删除', '确定要删除吗？', QMessageBox.Yes | QMessageBox.No)
+
+        if choice == QMessageBox.Yes:
+            for modelIndex in self.selectedIndexes():
+                item = self.standardItemModel.itemFromIndex(modelIndex)
+                if item.parent():
+                    item.parent().removeRow(item.row())
+                else:
+                    self.standardItemModel.removeRow(item.row())
 
     def copy(self):
         self.cutIndexSet.clear()
@@ -249,8 +247,19 @@ class TreeView(QTreeView):
                 self.pasteItemRecdursively(itemStorageDict, childItem, itemStorageDict[childModelIndex])
 
     def addNewItem(self, itemName):
-        if itemName == 'Label':
-            self.parentWindow.addSignal.emit('Label')
+        self.parentWindow.addSignal.emit(itemName)
+        self.updateItemWindowStructure(itemName)
+
+    def updateItemWindowStructure(self, itemName):
+        item = QStandardItem(itemName)
+
+        if self.clickedIndex.isValid():
+            self.standardItemModel.itemFromIndex(self.clickedIndex).appendRow(item)
+            self.expand(self.clickedIndex)
+        else:
+            self.standardItemModel.appendRow(item)
+
+        self.update()
 
     """Events"""
     def contextMenuEvent(self, event):
