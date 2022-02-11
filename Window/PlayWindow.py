@@ -7,6 +7,7 @@ from WindowParts.ItemWindow import ItemWindow
 from WindowParts.AssetWindow import AssetWindow
 from WindowParts.ConsoleWindow import ConsoleWindow
 from WindowParts.SceneWindow import SceneWindow
+from WindowParts.SceneWindowBase import SceneWindowBase
 
 
 class PlayWindow(QMainWindow):
@@ -25,6 +26,7 @@ class PlayWindow(QMainWindow):
         self.itemWindow = None
         self.assetWindow = None
         self.sceneWindow = None
+        self.sceneWindowBase = None
         self.consoleWindow = None
         self.propertyWindow = None
 
@@ -47,12 +49,13 @@ class PlayWindow(QMainWindow):
         self.itemWindow = ItemWindow()
         self.assetWindow = AssetWindow()
         self.sceneWindow = SceneWindow()
+        self.sceneWindowBase = SceneWindowBase()
         self.consoleWindow = ConsoleWindow()
         self.propertyWindow = QWidget()
 
         self.leftTopTab.addTab(self.itemWindow, '层级窗口')
         self.leftBottomTab.addTab(self.assetWindow, '资源窗口')
-        self.centerTopTab.addTab(self.sceneWindow, '场景窗口')
+        self.centerTopTab.addTab(self.sceneWindowBase, '场景窗口')
         self.centerBottomTab.addTab(self.consoleWindow, '日志窗口')
         self.rightTab.addTab(self.propertyWindow, '属性窗口')
 
@@ -74,9 +77,11 @@ class PlayWindow(QMainWindow):
         self.itemWindow.addSignal.connect(self.sceneWindow.add)
 
     def initLayouts(self):
-        hLayout = QHBoxLayout()
-        hLayout.addWidget(self.allSplitter)
-        self.windowCenterWidget.setLayout(hLayout)
+        hLayout1 = QHBoxLayout(self.sceneWindowBase)
+        hLayout1.addWidget(self.sceneWindow)
+
+        hLayout2 = QHBoxLayout(self.windowCenterWidget)
+        hLayout2.addWidget(self.allSplitter)
 
 
 if __name__ == '__main__':

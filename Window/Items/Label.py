@@ -35,6 +35,10 @@ class Label(QGraphicsTextItem):
         self.deleteLater()
 
     """Events"""
+    def mouseReleaseEvent(self, event):
+        super(Label, self).mouseReleaseEvent(event)
+        print(self.pos())
+
     def mouseDoubleClickEvent(self, event):
         super(Label, self).mouseDoubleClickEvent(event)
         self.setTextInteractionFlags(Qt.TextEditorInteraction)
