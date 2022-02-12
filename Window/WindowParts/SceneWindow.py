@@ -37,23 +37,45 @@ class SceneWindow(QGraphicsView):
         ...
 
     """Slots"""
-    def add(self, itemName, UUID):
-        print(itemName)
+    def delete(self, deletedItemsUUIDList):
+        # 根节点scene咋删？？?
+        print(deletedItemsUUIDList)
+        sceneItemsList = self.scene.items()
+        print(sceneItemsList)
+        print(sceneItemsList[0].UUID)
+        for UUID in deletedItemsUUIDList:
+            for item in sceneItemsList:
+                if item.UUID == UUID:
+                    print(UUID)
+                    self.scene.removeItem(item)
+                    break
+
+    def add(self, itemName, UUID, parentUUID):
+        # 先找到父项
+        parentItem = None
+        if parentUUID:
+            items = self.scene.items()
+            for item in items:
+                if item.UUID == parentUUID:
+                    parentItem = item
+                    break
+
+        # 再生成相应的项
         if itemName == 'Label':
-            self.addLabel(UUID)
+            self.addLabel(UUID, parentItem)
         elif itemName == 'Sprite':
-            self.addSprite(UUID)
+            self.addSprite(UUID, parentItem)
 
     def addButton(self, UUID):
         ...
 
-    def addLabel(self, UUID):
-        label = Label(UUID)
-        label.setHtml('Hello PyPlay')
+    def addLabel(self, UUID, parentItem):
+        label = Label(UUID, parentItem)
         label.setHtml('Hello PyPlay')
 
-        label.deleteSignal.connect(lambda: self.deleteSignal.emit(label.uuid))
-        self.scene.addItem(label)
+        label.deleteSignal.connect(lambda: self.deleteSignal.emit(label.UUID))
+        if not parentItem:
+            self.scene.addItem(label)
 
     def addLineEdit(self, UUID):
         ...
@@ -61,10 +83,15 @@ class SceneWindow(QGraphicsView):
     def addSlider(self, UUID):
         ...
 
-    def addSprite(self, UUID):
-        sprite = Sprite(UUID)
+    def addSprite(self, UUID, parentItem):
+        sprite = Sprite(UUID, parentItem)
         sprite.setPixmap(QPixmap('/Users/louis/Desktop/pyplay/res/d7e409bfa2ee4e3b956738ca1f6445e8.png'))
-        self.scene.addItem(sprite)
+
+        # QGraphiscPixmapItem无法转换成QObject，所以无法发送信号。
+        # 可以通过它的contextMenu直接发送 (这是特使情况，如果有其他Item出现类似的情形，就用这种办法解决)
+        sprite.contextMenu.deleteSignal.connect(lambda: self.deleteSignal.emit(sprite.UUID))
+        if not parentItem:
+            self.scene.addItem(sprite)
 
     """Events"""
     def paintEvent(self, event):

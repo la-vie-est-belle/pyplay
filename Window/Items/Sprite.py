@@ -5,9 +5,12 @@ from PyQt5.QtWidgets import *
 
 
 class Sprite(QGraphicsPixmapItem):
-    def __init__(self):
-        super(Sprite, self).__init__()
-        self.contextMenu = ContextMenuForSprite()
+    # deleteSignal = pyqtSignal(str)
+
+    def __init__(self, UUID, parentItem):
+        super(Sprite, self).__init__(parentItem)
+        self.UUID = UUID
+        self.contextMenu = ContextMenuForSprite(self)
         self.main()
 
     def main(self):
@@ -26,7 +29,15 @@ class Sprite(QGraphicsPixmapItem):
         ...
 
     def delete(self):
-        self.scene().removeItem(self)
+        choice = QMessageBox.question(self.scene().views()[0], '删除', '确定要删除吗？', QMessageBox.Yes | QMessageBox.No)
+
+        if choice == QMessageBox.Yes:
+            childItems = self.childItems()
+            for child in childItems:
+                child.scene().removeItem(child)
+
+            self.scene().removeItem(self)
+            # self.deleteSignal.emit(self.UUID)
 
     """Events"""
     def contextMenuEvent(self, event):
@@ -37,8 +48,9 @@ class ContextMenuForSprite(QObject):
     editSignal = pyqtSignal()
     deleteSignal = pyqtSignal()
 
-    def __init__(self):
+    def __init__(self, sprite):
         super(ContextMenuForSprite, self).__init__()
+        self.sprite = sprite
         self.mainMenu = QMenu()
 
         self.editAction = QAction('编辑', self.mainMenu)

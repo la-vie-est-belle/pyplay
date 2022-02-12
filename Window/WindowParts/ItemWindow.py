@@ -9,7 +9,8 @@ from util import updateItemStructureFile
 
 
 class ItemWindow(QWidget):
-    addSignal = pyqtSignal(str, str)
+    addSignal = pyqtSignal(str, str, str)
+    deleteSignal = pyqtSignal(list)
 
     def __init__(self):
         super(ItemWindow, self).__init__()
@@ -46,19 +47,15 @@ class ItemWindow(QWidget):
     """Slots"""
     def search(self, s):
         s = s.strip()
-        searchResult = []
+
         if s:
-            treeViewStandardItemModel = self.itemTreeView.standardItemModel
-            for row in range(treeViewStandardItemModel.rowCount()):
-                item = treeViewStandardItemModel.item(row, 0)
-                if re.search(f'{s}', item.text(), re.I):
-                    searchResult.append(item)
-                self.searchRecursively(s, searchResult, item)
+            itemList = self.itemTreeView.getAllItems()
 
             listViewStandardItemModel = self.searchListView.standardItemModel
             listViewStandardItemModel.setRowCount(0)
-            for item in searchResult:
-                listViewStandardItemModel.appendRow(BasicTreeViewItem(item.text(), item.UUID))
+            for item in itemList:
+                if re.search(f'{s}', item.text(), re.I):
+                    listViewStandardItemModel.appendRow(BasicTreeViewItem(item.text(), item.UUID))
 
             self.itemTreeView.hide()
             self.searchListView.show()
@@ -66,16 +63,21 @@ class ItemWindow(QWidget):
             self.searchListView.hide()
             self.itemTreeView.show()
 
-    def searchRecursively(self, keyword, storageList, parentItem):
-        if parentItem.hasChildren():
-            for i in range(500):
-                childItem = parentItem.child(i, 0)
-                if childItem:
-                    if re.search(f'{keyword}', childItem.text(), re.IGNORECASE):
-                        storageList.append(childItem)
-                    self.searchRecursively(keyword, storageList, childItem)
+    def delete(self, UUID):
+        # deleteItemInStructureFile(self.itemTreeView.itemStructureDict, UUID)
+        itemList = self.itemTreeView.getAllItems()
+        for item in itemList:
+            if item.UUID == UUID:
+                if item.parent():
+                    item.parent().removeRow(item.row())
                 else:
-                    break
+                    self.itemTreeView.standardItemModel.removeRow(item.row())
+                break
+
+        updateItemStructureFile(self.itemTreeView.itemStructureDict,
+                                self.itemTreeView.standardItemModel)
+
+        print(self.itemTreeView.itemStructureDict)
 
 
 class ListView(QListView):
@@ -116,6 +118,7 @@ class TreeView(QTreeView):
         self.dragItemIndexDict = {}
         self.copyOrCutItemIndexDict = {}
         self.itemStructureDict = {}
+        self.rootSceneUUID = ''
 
         self.contextMenu = ContextMenuForTreeView(self, self.copyOrCutItemIndexDict)
         self.treeViewDelegate = TreeViewDelegate(self.cutIndexSet)
@@ -139,6 +142,7 @@ class TreeView(QTreeView):
         # Scene item is by default.
         sceneItem = BasicTreeViewItem('Scene')
         self.standardItemModel.appendRow(sceneItem)
+        self.rootSceneUUID = sceneItem.UUID
 
         self.setModel(self.standardItemModel)
         self.setItemDelegate(self.treeViewDelegate)
@@ -153,6 +157,25 @@ class TreeView(QTreeView):
         self.contextMenu.pasteSignal.connect(self.paste)
         self.contextMenu.newItemSignal.connect(self.addNewItem)
 
+    def getAllItems(self):
+        itemsList = []
+        for row in range(self.standardItemModel.rowCount()):
+            item = self.standardItemModel.item(row, 0)
+            itemsList.append(item)
+            self.getItemChildrenRecursively(itemsList, item)
+
+        return itemsList
+
+    def getItemChildrenRecursively(self, storageList, parentItem):
+        if parentItem.hasChildren():
+            for i in range(500):
+                childItem = parentItem.child(i, 0)
+                if childItem:
+                    storageList.append(childItem)
+                    self.getItemChildrenRecursively(storageList, childItem)
+                else:
+                    break
+
     """Slots"""
     def showProperty(self, modelIndex):
         ...
@@ -166,19 +189,29 @@ class TreeView(QTreeView):
         if choice == QMessageBox.Yes:
             for modelIndex in self.selectedIndexes():
                 item = self.standardItemModel.itemFromIndex(modelIndex)
+                if item.UUID == self.rootSceneUUID:
+                    QMessageBox.critical(self, '错误', '不能删除Scene根节点', QMessageBox.Ok)
+                    return
+
+            deletedItemsUUIDList = []
+            for modelIndex in self.selectedIndexes():
+                item = self.standardItemModel.itemFromIndex(modelIndex)
+                deletedItemsUUIDList.append(item.UUID)
                 if item.parent():
                     item.parent().removeRow(item.row())
                 else:
                     self.standardItemModel.removeRow(item.row())
+
+            self.parentWindow.deleteSignal.emit(deletedItemsUUIDList)
+            updateItemStructureFile(self.itemStructureDict, self.standardItemModel)
 
     def copy(self):
         self.cutIndexSet.clear()
         self.copyOrCutItemIndexDict.clear()
 
         for modelIndex in self.selectedIndexes():
-            print(modelIndex)
             parentItem = self.standardItemModel.itemFromIndex(modelIndex)
-            self.getItemChildrenRecursively(self.copyOrCutItemIndexDict, modelIndex, parentItem)
+            self.getItemChildrenIndexRecursively(self.copyOrCutItemIndexDict, modelIndex, parentItem)
 
         self.copyOrCut = 'copy'
 
@@ -188,12 +221,12 @@ class TreeView(QTreeView):
 
         for modelIndex in self.selectedIndexes():
             parentItem = self.standardItemModel.itemFromIndex(modelIndex)
-            self.getItemChildrenRecursively(self.copyOrCutItemIndexDict, modelIndex, parentItem)
+            self.getItemChildrenIndexRecursively(self.copyOrCutItemIndexDict, modelIndex, parentItem)
             self.cutIndexSet.add(modelIndex)
 
         self.copyOrCut = 'cut'
 
-    def getItemChildrenRecursively(self, itemStorageDict, modelIndex, parentItem):
+    def getItemChildrenIndexRecursively(self, itemStorageDict, modelIndex, parentItem):
         itemStorageDict[modelIndex] = []
 
         if parentItem.hasChildren():
@@ -202,7 +235,7 @@ class TreeView(QTreeView):
                 if childItem:
                     childIndex = parentItem.child(i, 0).index()
                     itemStorageDict[modelIndex].append(childIndex)
-                    self.getItemChildrenRecursively(itemStorageDict, childIndex, childItem)
+                    self.getItemChildrenIndexRecursively(itemStorageDict, childIndex, childItem)
                 else:
                     break
 
@@ -251,7 +284,11 @@ class TreeView(QTreeView):
 
     def addNewItem(self, itemName):
         item = self.updateItemWindowView(itemName)
-        self.parentWindow.addSignal.emit(itemName, item.UUID)
+        # 传入item.parent().UUID的目的是上场景窗口上的item知道父对象是谁
+        if item.parent():
+            self.parentWindow.addSignal.emit(itemName, item.UUID, item.parent().UUID)
+        else:
+            self.parentWindow.addSignal.emit(itemName, item.UUID, '')
         updateItemStructureFile(self.itemStructureDict, self.standardItemModel)
 
     def updateItemWindowView(self, itemName):
@@ -280,7 +317,7 @@ class TreeView(QTreeView):
         self.dragItemIndexDict = {}
         for modelIndex in self.selectedIndexes():
             parentItem = self.standardItemModel.itemFromIndex(modelIndex)
-            self.getItemChildrenRecursively(self.dragItemIndexDict, modelIndex, parentItem)
+            self.getItemChildrenIndexRecursively(self.dragItemIndexDict, modelIndex, parentItem)
 
         event.acceptProposedAction()
 
