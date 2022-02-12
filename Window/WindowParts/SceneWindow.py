@@ -8,6 +8,8 @@ from Window.Items.Sprite import Sprite
 
 
 class SceneWindow(QGraphicsView):
+    deleteSignal = pyqtSignal(str)
+
     def __init__(self):
         super(SceneWindow, self).__init__()
         # self.resize(300, 100)
@@ -17,15 +19,6 @@ class SceneWindow(QGraphicsView):
 
         brush = QBrush(QColor(100, 100, 100))
         self.scene.setBackgroundBrush(brush)
-
-        label = Label()
-        label.setHtml('11111111111')
-        self.scene.addItem(label)
-
-        label2 = Label()
-        label2.setHtml('2222222')
-        self.scene.addItem(label2)
-        label2.setPos(20, 20)
 
         self.main()
 
@@ -44,21 +37,32 @@ class SceneWindow(QGraphicsView):
         ...
 
     """Slots"""
-    def add(self, itemName):
+    def add(self, itemName, UUID):
         print(itemName)
         if itemName == 'Label':
-            self.addLabel()
+            self.addLabel(UUID)
         elif itemName == 'Sprite':
-            self.addSprite()
+            self.addSprite(UUID)
 
-    def addLabel(self):
-        label = Label()
+    def addButton(self, UUID):
+        ...
+
+    def addLabel(self, UUID):
+        label = Label(UUID)
         label.setHtml('Hello PyPlay')
+        label.setHtml('Hello PyPlay')
+
+        label.deleteSignal.connect(lambda: self.deleteSignal.emit(label.uuid))
         self.scene.addItem(label)
 
-    def addSprite(self):
-        print(11111)
-        sprite = Sprite()
+    def addLineEdit(self, UUID):
+        ...
+
+    def addSlider(self, UUID):
+        ...
+
+    def addSprite(self, UUID):
+        sprite = Sprite(UUID)
         sprite.setPixmap(QPixmap('/Users/louis/Desktop/pyplay/res/d7e409bfa2ee4e3b956738ca1f6445e8.png'))
         self.scene.addItem(sprite)
 
@@ -79,9 +83,6 @@ class SceneWindow(QGraphicsView):
 
     def resizeEvent(self, event):
         super(SceneWindow, self).resizeEvent(event)
-
-        print(self.width())
-        print(self.height())
         self.scene.setSceneRect(0, 0, self.width(), self.height())
 
 

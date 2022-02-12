@@ -76,6 +76,8 @@ class PlayWindow(QMainWindow):
     def initSignals(self):
         self.itemWindow.addSignal.connect(self.sceneWindow.add)
 
+        # self.sceneWindow.deleteSignal.connect(self.itemWindow.delete)
+
     def initLayouts(self):
         hLayout1 = QHBoxLayout(self.sceneWindowBase)
         hLayout1.addWidget(self.sceneWindow)

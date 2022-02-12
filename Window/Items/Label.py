@@ -1,12 +1,14 @@
-import sys
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 
 
 class Label(QGraphicsTextItem):
-    def __init__(self):
+    deleteSignal = pyqtSignal(str)
+
+    def __init__(self, UUID):
         super(Label, self).__init__()
+        self.UUID = UUID
         self.contextMenu = ContextMenuForLabel()
         self.main()
 
@@ -32,7 +34,12 @@ class Label(QGraphicsTextItem):
         self.moveCursorToEnd()
 
     def delete(self):
-        self.deleteLater()
+        choice = QMessageBox.question(self.scene().views()[0], '删除', '确定要删除吗？', QMessageBox.Yes | QMessageBox.No)
+
+        if choice == QMessageBox.Yes:
+            self.deleteLater()
+            self.deleteSignal.emit(self.UUID)
+            # 删除itemWindow中对应的项
 
     """Events"""
     def mouseReleaseEvent(self, event):

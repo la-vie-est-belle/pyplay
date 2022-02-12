@@ -4,9 +4,12 @@ from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 
+from Window.Items.BasicTreeViewItem import BasicTreeViewItem
+from util import updateItemStructureFile
+
 
 class ItemWindow(QWidget):
-    addSignal = pyqtSignal(str)
+    addSignal = pyqtSignal(str, str)
 
     def __init__(self):
         super(ItemWindow, self).__init__()
@@ -55,11 +58,10 @@ class ItemWindow(QWidget):
             listViewStandardItemModel = self.searchListView.standardItemModel
             listViewStandardItemModel.setRowCount(0)
             for item in searchResult:
-                listViewStandardItemModel.appendRow(QStandardItem(item))    # 如果是实例化的话，考虑下后面点击显示属性窗口会不会有问题
+                listViewStandardItemModel.appendRow(BasicTreeViewItem(item.text(), item.UUID))
 
             self.itemTreeView.hide()
             self.searchListView.show()
-
         else:
             self.searchListView.hide()
             self.itemTreeView.show()
@@ -113,6 +115,7 @@ class TreeView(QTreeView):
         self.cutIndexSet = set()
         self.dragItemIndexDict = {}
         self.copyOrCutItemIndexDict = {}
+        self.itemStructureDict = {}
 
         self.contextMenu = ContextMenuForTreeView(self, self.copyOrCutItemIndexDict)
         self.treeViewDelegate = TreeViewDelegate(self.cutIndexSet)
@@ -134,7 +137,7 @@ class TreeView(QTreeView):
 
     def initWidgets(self):
         # Scene item is by default.
-        sceneItem = QStandardItem('Scene')
+        sceneItem = BasicTreeViewItem('Scene')
         self.standardItemModel.appendRow(sceneItem)
 
         self.setModel(self.standardItemModel)
@@ -213,14 +216,14 @@ class TreeView(QTreeView):
 
             currentClickItem = self.standardItemModel.itemFromIndex(self.clickedIndex)
             for parentModelIndex, childModelIndexList in self.copyOrCutItemIndexDict.items():
-                parentItem = QStandardItem(self.standardItemModel.itemFromIndex(parentModelIndex))
+                parentItem = BasicTreeViewItem(self.standardItemModel.itemFromIndex(parentModelIndex))
                 currentClickItem.appendRow(parentItem)
                 if childModelIndexList:
                     self.pasteItemRecdursively(self.copyOrCutItemIndexDict, parentItem, childModelIndexList)
                 break
         else:
             for parentModelIndex, childModelIndexList in self.copyOrCutItemIndexDict.items():
-                parentItem = QStandardItem(self.standardItemModel.itemFromIndex(parentModelIndex))
+                parentItem = BasicTreeViewItem(self.standardItemModel.itemFromIndex(parentModelIndex))
                 self.standardItemModel.appendRow(parentItem)
                 if childModelIndexList:
                     self.pasteItemRecdursively(self.copyOrCutItemIndexDict, parentItem, childModelIndexList)
@@ -241,17 +244,18 @@ class TreeView(QTreeView):
 
     def pasteItemRecdursively(self, itemStorageDict, parentItem, childModelIndexList):
         for childModelIndex in childModelIndexList:
-            childItem = QStandardItem(self.standardItemModel.itemFromIndex(childModelIndex))
+            childItem = BasicTreeViewItem(self.standardItemModel.itemFromIndex(childModelIndex))
             parentItem.appendRow(childItem)
             if itemStorageDict.get(childModelIndex):
                 self.pasteItemRecdursively(itemStorageDict, childItem, itemStorageDict[childModelIndex])
 
     def addNewItem(self, itemName):
-        self.parentWindow.addSignal.emit(itemName)
-        self.updateItemWindowStructure(itemName)
+        item = self.updateItemWindowView(itemName)
+        self.parentWindow.addSignal.emit(itemName, item.UUID)
+        updateItemStructureFile(self.itemStructureDict, self.standardItemModel)
 
-    def updateItemWindowStructure(self, itemName):
-        item = QStandardItem(itemName)
+    def updateItemWindowView(self, itemName):
+        item = BasicTreeViewItem(itemName)
 
         if self.clickedIndex.isValid():
             self.standardItemModel.itemFromIndex(self.clickedIndex).appendRow(item)
@@ -260,6 +264,7 @@ class TreeView(QTreeView):
             self.standardItemModel.appendRow(item)
 
         self.update()
+        return item
 
     """Events"""
     def contextMenuEvent(self, event):
@@ -294,14 +299,14 @@ class TreeView(QTreeView):
 
             targetItem = self.standardItemModel.itemFromIndex(index)
             for parentModelIndex, childModelIndexList in self.dragItemIndexDict.items():
-                parentItem = QStandardItem(self.standardItemModel.itemFromIndex(parentModelIndex))
+                parentItem = BasicTreeViewItem(self.standardItemModel.itemFromIndex(parentModelIndex))
                 targetItem.appendRow(parentItem)
                 if childModelIndexList:
                     self.pasteItemRecdursively(self.dragItemIndexDict, parentItem, childModelIndexList)
                 break
         else:
             for parentModelIndex, childModelIndexList in self.dragItemIndexDict.items():
-                parentItem = QStandardItem(self.standardItemModel.itemFromIndex(parentModelIndex))
+                parentItem = BasicTreeViewItem(self.standardItemModel.itemFromIndex(parentModelIndex))
                 self.standardItemModel.appendRow(parentItem)
                 if childModelIndexList:
                     self.pasteItemRecdursively(self.dragItemIndexDict, parentItem, childModelIndexList)
