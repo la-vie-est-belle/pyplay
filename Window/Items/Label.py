@@ -39,7 +39,6 @@ class Label(QGraphicsTextItem):
 
         if choice == QMessageBox.Yes:
             childItems = self.childItems()
-            print(childItems)
             for child in childItems:
                 child.scene().removeItem(child)
 
@@ -47,18 +46,10 @@ class Label(QGraphicsTextItem):
             self.deleteSignal.emit(self.UUID)
 
     """Events"""
-    def mouseReleaseEvent(self, event):
-        super(Label, self).mouseReleaseEvent(event)
-        print(self.pos())
-
     def mouseDoubleClickEvent(self, event):
         super(Label, self).mouseDoubleClickEvent(event)
         self.setTextInteractionFlags(Qt.TextEditorInteraction)
         self.moveCursorToEnd()
-
-    def keyPressEvent(self, event):
-        super(Label, self).keyPressEvent(event)
-        print(self.toPlainText())
 
     def focusOutEvent(self, event):
         super(Label, self).focusOutEvent(event)

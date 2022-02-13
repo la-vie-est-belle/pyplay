@@ -9,6 +9,7 @@ from Window.Items.Sprite import Sprite
 
 class SceneWindow(QGraphicsView):
     deleteSignal = pyqtSignal(str)
+    clickSignal = pyqtSignal(list)
 
     def __init__(self):
         super(SceneWindow, self).__init__()
@@ -37,6 +38,19 @@ class SceneWindow(QGraphicsView):
         ...
 
     """Slots"""
+    def focus(self, UUIDList):
+        itemsList = self.scene.items()
+        for item in itemsList:
+            item.setSelected(False)
+
+        for UUID in UUIDList:
+            for item in itemsList:
+                if item.UUID == UUID:
+                    item.setSelected(True)
+                    break
+
+        self.update()
+
     def delete(self, deletedItemsUUIDList):
         # 根节点scene咋删？？?
         print(deletedItemsUUIDList)
@@ -94,19 +108,27 @@ class SceneWindow(QGraphicsView):
             self.scene.addItem(sprite)
 
     """Events"""
+    # mousePressEvent有个多选bug，所以改为用mouseReleaseEvent
+    def mouseReleaseEvent(self, event):
+        super(SceneWindow, self).mouseReleaseEvent(event)
+        # UUIDList = []
+        # for item in self.scene.selectedItems():
+        #     UUIDList.append(item.UUID)
+        #
+        # if UUIDList:
+        #     self.clickSignal.emit(UUIDList)
+
     def paintEvent(self, event):
         super(SceneWindow, self).paintEvent(event)
-        # print(self.width())
-        # print(self.height())
-        #
-        # painter = QPainter(self.viewport())
-        # # painter.setBrush(self.brush)
-        # # painter.drawRect(0, 0, 100, 100)
-        #
-        # pixmap = QPixmap('/Users/louis/Desktop/pyplay/res/d7e409bfa2ee4e3b956738ca1f6445e8.png')
-        # painter.drawPixmap(0, 0, self.width(), self.height(), pixmap)
-        # self.update()
-        ...
+
+        # 这段代码应该要放在mousePressEvent中的
+        # 但是鼠标点击事件不能实时获取多选的item
+        UUIDList = []
+        for item in self.scene.selectedItems():
+            UUIDList.append(item.UUID)
+
+        if UUIDList:
+            self.clickSignal.emit(UUIDList)
 
     def resizeEvent(self, event):
         super(SceneWindow, self).resizeEvent(event)

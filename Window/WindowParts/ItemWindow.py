@@ -11,6 +11,7 @@ from util import updateItemStructureFile
 class ItemWindow(QWidget):
     addSignal = pyqtSignal(str, str, str)
     deleteSignal = pyqtSignal(list)
+    clickSignal = pyqtSignal(list)
 
     def __init__(self):
         super(ItemWindow, self).__init__()
@@ -77,7 +78,22 @@ class ItemWindow(QWidget):
         updateItemStructureFile(self.itemTreeView.itemStructureDict,
                                 self.itemTreeView.standardItemModel)
 
-        print(self.itemTreeView.itemStructureDict)
+    def focus(self, UUIDList):
+        self.itemTreeView.clearSelection()
+
+        itemsList = self.itemTreeView.getAllItems()
+        for item in itemsList:
+            item.setForeground(QColor(0, 0, 0, 255))
+            item.setBackground(QColor(0, 0, 0, 0))
+
+        for UUID in UUIDList:
+            for item in itemsList:
+                if item.UUID == UUID:
+                    item.setForeground(QColor(255, 255, 255, 255))
+                    item.setBackground(QColor(0, 105, 217, 255))
+                    break
+
+        self.update()
 
 
 class ListView(QListView):
@@ -111,14 +127,15 @@ class TreeView(QTreeView):
         super(TreeView, self).__init__()
         self.parentWindow = parentWindow
         self.standardItemModel = QStandardItemModel()
+
         self.allItems = []
         self.copyOrCut = None
         self.clickedIndex = None
         self.cutIndexSet = set()
+        self.rootSceneUUID = ''
+        self.itemStructureDict = {}
         self.dragItemIndexDict = {}
         self.copyOrCutItemIndexDict = {}
-        self.itemStructureDict = {}
-        self.rootSceneUUID = ''
 
         self.contextMenu = ContextMenuForTreeView(self, self.copyOrCutItemIndexDict)
         self.treeViewDelegate = TreeViewDelegate(self.cutIndexSet)
@@ -224,6 +241,7 @@ class TreeView(QTreeView):
             self.getItemChildrenIndexRecursively(self.copyOrCutItemIndexDict, modelIndex, parentItem)
             self.cutIndexSet.add(modelIndex)
 
+        self.clearSelection()
         self.copyOrCut = 'cut'
 
     def getItemChildrenIndexRecursively(self, itemStorageDict, modelIndex, parentItem):
@@ -244,7 +262,7 @@ class TreeView(QTreeView):
             # The parent item can not be cut to its children.
             if self.copyOrCut == 'cut':
                 for parentModelIndex, childModelIndexList in self.copyOrCutItemIndexDict.items():
-                    if self.clickedIndex in childModelIndexList:
+                    if self.clickedIndex in childModelIndexList or self.clickedIndex == parentModelIndex :
                         return
 
             currentClickItem = self.standardItemModel.itemFromIndex(self.clickedIndex)
@@ -304,6 +322,25 @@ class TreeView(QTreeView):
         return item
 
     """Events"""
+    def mousePressEvent(self, event):
+        super(TreeView, self).mousePressEvent(event)
+        self.clickedIndex = self.indexAt(event.pos())
+
+        # 清空从scene window上点击项后造成的选中效果
+        itemsList = self.getAllItems()
+        for item in itemsList:
+            item.setForeground(QColor(0, 0, 0, 255))
+            item.setBackground(QColor(0, 0, 0, 0))
+
+        UUIDList = []
+        for index in self.selectedIndexes():
+            if index.isValid():
+                item = self.standardItemModel.itemFromIndex(index)
+                UUIDList.append(item.UUID)
+
+        self.parentWindow.clickSignal.emit(UUIDList)
+        self.update()
+
     def contextMenuEvent(self, event):
         index = self.indexAt(event.pos())
         self.clickedIndex = index
