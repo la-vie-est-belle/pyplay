@@ -9,7 +9,7 @@ class Label(QGraphicsTextItem):
     def __init__(self, UUID, parentItem):
         super(Label, self).__init__(parentItem)
         self.UUID = UUID
-        self.contextMenu = ContextMenuForLabel()
+        self.contextMenu = ContextMenu()
 
         self.main()
 
@@ -60,12 +60,12 @@ class Label(QGraphicsTextItem):
         self.contextMenu.execMainMenu(event.screenPos())
 
 
-class ContextMenuForLabel(QObject):
+class ContextMenu(QObject):
     editSignal = pyqtSignal()
     deleteSignal = pyqtSignal()
 
     def __init__(self):
-        super(ContextMenuForLabel, self).__init__()
+        super(ContextMenu, self).__init__()
         self.mainMenu = QMenu()
 
         self.editAction = QAction('编辑', self.mainMenu)

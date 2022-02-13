@@ -5,6 +5,7 @@ from PyQt5.QtWidgets import *
 
 from Window.Items.Label import Label
 from Window.Items.Sprite import Sprite
+from Window.Items.Button import Button
 
 
 class SceneWindow(QGraphicsView):
@@ -52,11 +53,7 @@ class SceneWindow(QGraphicsView):
         self.update()
 
     def delete(self, deletedItemsUUIDList):
-        # 根节点scene咋删？？?
-        print(deletedItemsUUIDList)
         sceneItemsList = self.scene.items()
-        print(sceneItemsList)
-        print(sceneItemsList[0].UUID)
         for UUID in deletedItemsUUIDList:
             for item in sceneItemsList:
                 if item.UUID == UUID:
@@ -75,13 +72,18 @@ class SceneWindow(QGraphicsView):
                     break
 
         # 再生成相应的项
+        if itemName == 'Button':
+            self.addButton(UUID, parentItem)
         if itemName == 'Label':
             self.addLabel(UUID, parentItem)
         elif itemName == 'Sprite':
             self.addSprite(UUID, parentItem)
 
-    def addButton(self, UUID):
-        ...
+    def addButton(self, UUID, parentItem):
+        button = Button(UUID, parentItem)
+
+        if not parentItem:
+            self.scene.addItem(button)
 
     def addLabel(self, UUID, parentItem):
         label = Label(UUID, parentItem)
@@ -111,24 +113,24 @@ class SceneWindow(QGraphicsView):
     # mousePressEvent有个多选bug，所以改为用mouseReleaseEvent
     def mouseReleaseEvent(self, event):
         super(SceneWindow, self).mouseReleaseEvent(event)
-        # UUIDList = []
-        # for item in self.scene.selectedItems():
-        #     UUIDList.append(item.UUID)
-        #
-        # if UUIDList:
-        #     self.clickSignal.emit(UUIDList)
-
-    def paintEvent(self, event):
-        super(SceneWindow, self).paintEvent(event)
-
-        # 这段代码应该要放在mousePressEvent中的
-        # 但是鼠标点击事件不能实时获取多选的item
         UUIDList = []
         for item in self.scene.selectedItems():
             UUIDList.append(item.UUID)
 
         if UUIDList:
             self.clickSignal.emit(UUIDList)
+
+    def paintEvent(self, event):
+        super(SceneWindow, self).paintEvent(event)
+
+        # 这段代码应该要放在mousePressEvent中的
+        # 但是鼠标点击事件不能实时获取多选的item
+        # UUIDList = []
+        # for item in self.scene.selectedItems():
+        #     UUIDList.append(item.UUID)
+        #
+        # if UUIDList:
+        #     self.clickSignal.emit(UUIDList)
 
     def resizeEvent(self, event):
         super(SceneWindow, self).resizeEvent(event)

@@ -16,7 +16,7 @@ class ItemWindow(QWidget):
     def __init__(self):
         super(ItemWindow, self).__init__()
         self.searchLine = QLineEdit()
-        self.searchListView = ListView()
+        self.searchListView = ListView(self)
         self.itemTreeView = TreeView(self)
 
         self.main()
@@ -97,8 +97,9 @@ class ItemWindow(QWidget):
 
 
 class ListView(QListView):
-    def __init__(self):
+    def __init__(self, parentWindow):
         super(ListView, self).__init__()
+        self.parentWindow = parentWindow
         self.standardItemModel = QStandardItemModel()
 
         self.main()
@@ -120,6 +121,19 @@ class ListView(QListView):
 
     def showProperty(self, index):
         print(index.data())
+
+    """Evernts"""
+    def mousePressEvent(self, event):
+        super(ListView, self).mousePressEvent(event)
+
+        UUIDList = []
+        for index in self.selectedIndexes():
+            if index.isValid():
+                item = self.standardItemModel.itemFromIndex(index)
+                UUIDList.append(item.UUID)
+
+        self.parentWindow.clickSignal.emit(UUIDList)
+        self.update()
 
 
 class TreeView(QTreeView):

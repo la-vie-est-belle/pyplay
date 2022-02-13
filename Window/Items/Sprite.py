@@ -8,7 +8,7 @@ class Sprite(QGraphicsPixmapItem):
     def __init__(self, UUID, parentItem):
         super(Sprite, self).__init__(parentItem)
         self.UUID = UUID
-        self.contextMenu = ContextMenuForSprite(self)
+        self.contextMenu = ContextMenu(self)
         self.main()
 
     def main(self):
@@ -42,12 +42,12 @@ class Sprite(QGraphicsPixmapItem):
         self.contextMenu.execMainMenu(event.screenPos())
 
 
-class ContextMenuForSprite(QObject):
+class ContextMenu(QObject):
     editSignal = pyqtSignal()
     deleteSignal = pyqtSignal()
 
     def __init__(self, sprite):
-        super(ContextMenuForSprite, self).__init__()
+        super(ContextMenu, self).__init__()
         self.sprite = sprite
         self.mainMenu = QMenu()
 
