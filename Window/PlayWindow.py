@@ -9,6 +9,8 @@ from WindowParts.ConsoleWindow import ConsoleWindow
 from WindowParts.SceneWindow import SceneWindow
 from WindowParts.SceneWindowBase import SceneWindowBase
 
+from Properties.Label import LabelPropertyWindow
+
 
 class PlayWindow(QMainWindow):
     def __init__(self):
@@ -23,12 +25,14 @@ class PlayWindow(QMainWindow):
         self.centerBottomTab = QTabWidget()
         self.rightTab = QTabWidget()
 
-        self.itemWindow = None
-        self.assetWindow = None
-        self.sceneWindow = None
-        self.sceneWindowBase = None
-        self.consoleWindow = None
-        self.propertyWindow = None
+        self.itemWindow = ItemWindow()
+        self.assetWindow = AssetWindow()
+        self.sceneWindow = SceneWindow()
+        self.sceneWindowBase = SceneWindowBase()
+        self.consoleWindow = ConsoleWindow()
+        self.propertyWindow = QWidget()
+
+        self.labelPropertyWindow = LabelPropertyWindow()
 
         self.windowCenterWidget = QWidget()
 
@@ -41,18 +45,13 @@ class PlayWindow(QMainWindow):
         self.initLayouts()
 
     def initWindowAttrs(self):
-        self.resize(1400, 700)
+        self.resize(1360, 800)
         self.setWindowTitle('PyPlay')
         self.setCentralWidget(self.windowCenterWidget)
 
     def initWidgets(self):
-        self.itemWindow = ItemWindow()
-        self.assetWindow = AssetWindow()
-        self.sceneWindow = SceneWindow()
-        self.sceneWindowBase = SceneWindowBase()
-        self.consoleWindow = ConsoleWindow()
-        self.propertyWindow = QWidget()
-
+        self.labelPropertyWindow.hide()
+        
         self.leftTopTab.addTab(self.itemWindow, '层级窗口')
         self.leftBottomTab.addTab(self.assetWindow, '资源窗口')
         self.centerTopTab.addTab(self.sceneWindowBase, '场景窗口')
@@ -66,12 +65,12 @@ class PlayWindow(QMainWindow):
         self.centerSplitter.addWidget(self.centerTopTab)
         self.centerSplitter.addWidget(self.centerBottomTab)
         self.centerSplitter.setOrientation(Qt.Vertical)
-        self.centerSplitter.setSizes([500, 200])
+        self.centerSplitter.setSizes([550, 250])
 
         self.allSplitter.addWidget(self.leftSplitter)
         self.allSplitter.addWidget(self.centerSplitter)
         self.allSplitter.addWidget(self.rightTab)
-        self.allSplitter.setSizes([300, 800, 300])
+        self.allSplitter.setSizes([280, 800, 280])
 
     def initSignals(self):
         self.itemWindow.addSignal.connect(self.sceneWindow.add)
@@ -82,11 +81,14 @@ class PlayWindow(QMainWindow):
         # self.sceneWindow.clickSignal.connect(self.itemWindow.focus)
 
     def initLayouts(self):
-        hLayout1 = QHBoxLayout(self.sceneWindowBase)
-        hLayout1.addWidget(self.sceneWindow)
+        hLayout1 = QHBoxLayout(self.windowCenterWidget)
+        hLayout1.addWidget(self.allSplitter)
 
-        hLayout2 = QHBoxLayout(self.windowCenterWidget)
-        hLayout2.addWidget(self.allSplitter)
+        hLayout2 = QHBoxLayout(self.sceneWindowBase)
+        hLayout2.addWidget(self.sceneWindow)
+
+        hLayout3 = QHBoxLayout(self.propertyWindow)
+        hLayout3.addWidget(self.labelPropertyWindow)
 
 
 if __name__ == '__main__':

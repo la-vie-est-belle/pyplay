@@ -92,7 +92,7 @@ class LabelPropertyWindow(QWidget):
         layout6.addWidget(self.fontEdit)
 
         layout7 = QHBoxLayout()
-        layout7.addWidget(QLabel('字体：'))
+        layout7.addWidget(QLabel('颜色：'))
         layout7.addWidget(self.colorEdit)
 
         windowLayout = QVBoxLayout(self)
