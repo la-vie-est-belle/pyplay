@@ -76,10 +76,10 @@ class PlayWindow(QMainWindow):
     def initSignals(self):
         self.itemWindow.addSignal.connect(self.sceneWindow.add)
         self.itemWindow.deleteSignal.connect(self.sceneWindow.delete)
-        self.itemWindow.clickSignal.connect(self.sceneWindow.focus)
+        # self.itemWindow.clickSignal.connect(self.sceneWindow.focus)
 
         self.sceneWindow.deleteSignal.connect(self.itemWindow.delete)
-        self.sceneWindow.clickSignal.connect(self.itemWindow.focus)
+        # self.sceneWindow.clickSignal.connect(self.itemWindow.focus)
 
     def initLayouts(self):
         hLayout1 = QHBoxLayout(self.sceneWindowBase)
@@ -92,6 +92,6 @@ class PlayWindow(QMainWindow):
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     playWindow = PlayWindow()
-    playWindow.setStyleSheet(readQss('../res/qss/default.qss'))
+    playWindow.setStyleSheet(readQss('default.qss'))
     playWindow.show()
     sys.exit(app.exec())

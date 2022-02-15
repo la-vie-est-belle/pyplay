@@ -78,22 +78,22 @@ class ItemWindow(QWidget):
         updateItemStructureFile(self.itemTreeView.itemStructureDict,
                                 self.itemTreeView.standardItemModel)
 
-    def focus(self, UUIDList):
-        self.itemTreeView.clearSelection()
-
-        itemsList = self.itemTreeView.getAllItems()
-        for item in itemsList:
-            item.setForeground(QColor(0, 0, 0, 255))
-            item.setBackground(QColor(0, 0, 0, 0))
-
-        for UUID in UUIDList:
-            for item in itemsList:
-                if item.UUID == UUID:
-                    item.setForeground(QColor(255, 255, 255, 255))
-                    item.setBackground(QColor(0, 105, 217, 255))
-                    break
-
-        self.update()
+    # def focus(self, UUIDList):
+    #     self.itemTreeView.clearSelection()
+    #
+    #     itemsList = self.itemTreeView.getAllItems()
+    #     for item in itemsList:
+    #         item.setForeground(QColor(0, 0, 0, 255))
+    #         item.setBackground(QColor(0, 0, 0, 0))
+    #
+    #     for UUID in UUIDList:
+    #         for item in itemsList:
+    #             if item.UUID == UUID:
+    #                 item.setForeground(QColor(255, 255, 255, 255))
+    #                 item.setBackground(QColor(0, 105, 217, 255))
+    #                 break
+    #
+    #     self.update()
 
 
 class ListView(QListView):
@@ -123,17 +123,17 @@ class ListView(QListView):
         print(index.data())
 
     """Evernts"""
-    def mousePressEvent(self, event):
-        super(ListView, self).mousePressEvent(event)
-
-        UUIDList = []
-        for index in self.selectedIndexes():
-            if index.isValid():
-                item = self.standardItemModel.itemFromIndex(index)
-                UUIDList.append(item.UUID)
-
-        self.parentWindow.clickSignal.emit(UUIDList)
-        self.update()
+    # def mousePressEvent(self, event):
+    #     super(ListView, self).mousePressEvent(event)
+    #
+    #     UUIDList = []
+    #     for index in self.selectedIndexes():
+    #         if index.isValid():
+    #             item = self.standardItemModel.itemFromIndex(index)
+    #             UUIDList.append(item.UUID)
+    #
+    #     self.parentWindow.clickSignal.emit(UUIDList)
+    #     self.update()
 
 
 class TreeView(QTreeView):

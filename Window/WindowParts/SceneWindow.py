@@ -3,14 +3,16 @@ from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 
-from Window.Items.Label import Label
-from Window.Items.Sprite import Sprite
 from Window.Items.Button import Button
+from Window.Items.Label import Label
+from Window.Items.LineEdit import LineEdit
+from Window.Items.Slider import Slider
+from Window.Items.Sprite import Sprite
 
 
 class SceneWindow(QGraphicsView):
     deleteSignal = pyqtSignal(str)
-    clickSignal = pyqtSignal(list)
+    # clickSignal = pyqtSignal(list)
 
     def __init__(self):
         super(SceneWindow, self).__init__()
@@ -19,7 +21,7 @@ class SceneWindow(QGraphicsView):
         self.scene = QGraphicsScene()
         self.setScene(self.scene)
 
-        brush = QBrush(QColor(100, 100, 100))
+        brush = QBrush(QColor(0, 210, 0))
         self.scene.setBackgroundBrush(brush)
 
         self.main()
@@ -38,19 +40,30 @@ class SceneWindow(QGraphicsView):
     def initSignals(self):
         ...
 
-    """Slots"""
-    def focus(self, UUIDList):
-        itemsList = self.scene.items()
-        for item in itemsList:
-            item.setSelected(False)
-
-        for UUID in UUIDList:
-            for item in itemsList:
-                if item.UUID == UUID:
-                    item.setSelected(True)
+    def getParentItem(self, parentUUID):
+        parentItem = None
+        if parentUUID:
+            items = self.scene.items()
+            for item in items:
+                if item.UUID == parentUUID:
+                    parentItem = item
                     break
 
-        self.update()
+        return parentItem
+
+    """Slots"""
+    # def focus(self, UUIDList):
+    #     itemsList = self.scene.items()
+    #     for item in itemsList:
+    #         item.setSelected(False)
+    #
+    #     for UUID in UUIDList:
+    #         for item in itemsList:
+    #             if item.UUID == UUID:
+    #                 item.setSelected(True)
+    #                 break
+    #
+    #     self.update()
 
     def delete(self, deletedItemsUUIDList):
         sceneItemsList = self.scene.items()
@@ -63,74 +76,67 @@ class SceneWindow(QGraphicsView):
 
     def add(self, itemName, UUID, parentUUID):
         # 先找到父项
-        parentItem = None
-        if parentUUID:
-            items = self.scene.items()
-            for item in items:
-                if item.UUID == parentUUID:
-                    parentItem = item
-                    break
+        parentItem = self.getParentItem(parentUUID)
 
         # 再生成相应的项
+        item = None
         if itemName == 'Button':
-            self.addButton(UUID, parentItem)
-        if itemName == 'Label':
-            self.addLabel(UUID, parentItem)
+            item = self.makeButton(UUID, parentItem)
+        elif itemName == 'Label':
+            item = self.makeLabel(UUID, parentItem)
+        elif itemName == 'LineEdit':
+            item = self.makeLineEdit(UUID, parentItem)
+        elif itemName == 'Slider':
+            item = self.makeSlider(UUID, parentItem)
         elif itemName == 'Sprite':
-            self.addSprite(UUID, parentItem)
+            item = self.makeSprite(UUID, parentItem)
 
-    def addButton(self, UUID, parentItem):
+        if not parentItem:
+            self.scene.addItem(item)
+
+    def makeButton(self, UUID, parentItem):
         button = Button(UUID, parentItem)
+        button.deleteSignal.connect(lambda: self.deleteSignal.emit(button.UUID))
+        return button
 
-        if not parentItem:
-            self.scene.addItem(button)
-
-    def addLabel(self, UUID, parentItem):
+    def makeLabel(self, UUID, parentItem):
         label = Label(UUID, parentItem)
-        label.setHtml('Hello PyPlay')
-
         label.deleteSignal.connect(lambda: self.deleteSignal.emit(label.UUID))
-        if not parentItem:
-            self.scene.addItem(label)
+        return label
 
-    def addLineEdit(self, UUID):
-        ...
+    def makeLineEdit(self, UUID, parentItem):
+        lineEdit = LineEdit(UUID, parentItem)
+        lineEdit.deleteSignal.connect(lambda: self.deleteSignal.emit(lineEdit.UUID))
+        return lineEdit
 
-    def addSlider(self, UUID):
-        ...
+    def makeSlider(self, UUID, parentItem):
+        slider = Slider(UUID, parentItem)
+        slider.deleteSignal.connect(lambda: self.deleteSignal.emit(slider.UUID))
+        return slider
 
-    def addSprite(self, UUID, parentItem):
+    def makeSprite(self, UUID, parentItem):
         sprite = Sprite(UUID, parentItem)
-        sprite.setPixmap(QPixmap('/Users/louis/Desktop/pyplay/res/d7e409bfa2ee4e3b956738ca1f6445e8.png'))
-
-        # QGraphiscPixmapItem无法转换成QObject，所以无法发送信号。
-        # 可以通过它的contextMenu直接发送 (这是特使情况，如果有其他Item出现类似的情形，就用这种办法解决)
-        sprite.contextMenu.deleteSignal.connect(lambda: self.deleteSignal.emit(sprite.UUID))
-        if not parentItem:
-            self.scene.addItem(sprite)
+        sprite.deleteSignal.connect(lambda: self.deleteSignal.emit(sprite.UUID))
+        return sprite
 
     """Events"""
     # mousePressEvent有个多选bug，所以改为用mouseReleaseEvent
-    def mouseReleaseEvent(self, event):
-        super(SceneWindow, self).mouseReleaseEvent(event)
-        UUIDList = []
-        for item in self.scene.selectedItems():
-            UUIDList.append(item.UUID)
+    # def mousePressEvent(self, event):
+    #     super(SceneWindow, self).mousePressEvent(event)
+    #     # UUIDList = []
+    #     # for item in self.scene.selectedItems():
+    #     #     UUIDList.append(item.UUID)
+    #     #
+    #     # print(self.scene.items())
+    #     # print(UUIDList)
+    #     # if UUIDList:
+    #     #     self.clickSignal.emit(UUIDList)
+    #     for item in self.scene.items():
+    #         if item.hasFocus():
+    #             print(item)
 
-        if UUIDList:
-            self.clickSignal.emit(UUIDList)
-
-    def paintEvent(self, event):
-        super(SceneWindow, self).paintEvent(event)
-
-        # 这段代码应该要放在mousePressEvent中的
-        # 但是鼠标点击事件不能实时获取多选的item
-        # UUIDList = []
-        # for item in self.scene.selectedItems():
-        #     UUIDList.append(item.UUID)
-        #
-        # if UUIDList:
-        #     self.clickSignal.emit(UUIDList)
+    # def paintEvent(self, event):
+    #     super(SceneWindow, self).paintEvent(event)
 
     def resizeEvent(self, event):
         super(SceneWindow, self).resizeEvent(event)

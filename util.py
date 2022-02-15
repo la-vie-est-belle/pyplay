@@ -1,7 +1,16 @@
 import uuid
 import time
 import json
+from pathlib import Path
 from PyQt5.QtCore import QFile, QTextStream
+
+
+def getQssPath(qssName):
+    return str(Path(__file__).parent / 'res' / 'qss' / qssName)
+
+
+def getImagePath(imgName):
+    return str(Path(__file__).parent / 'res' / 'image' / imgName)
 
 
 def getUUID():
@@ -9,8 +18,8 @@ def getUUID():
     return str(UUID)
 
 
-def readQss(qssPath):
-    file = QFile(qssPath)
+def readQss(qssName):
+    file = QFile(getQssPath(qssName))
     file.open(QFile.ReadOnly)
     return QTextStream(file).readAll()
 
