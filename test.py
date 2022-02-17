@@ -4,34 +4,30 @@ from PyQt5.QtGui import QPixmap, QTransform
 from PyQt5.QtWidgets import *
 
 
-class Demo(QGraphicsView):
+class Demo(QLabel):
     def __init__(self):
         super(Demo, self).__init__()
-        self.resize(600, 600)
-        self.setAlignment(Qt.AlignTop)
+        # left 1
+        # right 2
+        # hcenter 4
 
-        self.scene = QGraphicsScene()
-        self.scene.setSceneRect(0, 0, 300, 300)
+        # top 32
+        # bottom 64
+        # vcenter 128
 
-        self.rect = self.scene.addRect(0, 0, 100, 30)
-        self.rect2 = self.scene.addRect(300, 300, 100, 30)
-        self.ellipse = self.scene.addEllipse(100, 80, 50, 40)
-        self.pic = self.scene.addPixmap(QPixmap('pic.png').scaled(60, 60))
-        self.pic.setOffset(100, 130)
+        # left | top   33
+        # left | bottom 65
+        # left | vcenter 129
 
-        rect = QGraphicsRectItem(100, 30, 10, 10, self.rect)
-        self.scene.addItem(rect)
+        # right | top   34
+        # right | bottom 66
+        # right | vcenter 130
 
-        self.rect.setFlags(QGraphicsItem.ItemIsSelectable | QGraphicsItem.ItemIsMovable)
-        self.ellipse.setFlags(QGraphicsItem.ItemIsSelectable | QGraphicsItem.ItemIsMovable)
-        self.pic.setFlags(QGraphicsItem.ItemIsSelectable | QGraphicsItem.ItemIsMovable)
-
-        self.setScene(self.scene)
-
-    def mouseDoubleClickEvent(self, event):
-        item = self.scene.itemAt(event.pos(), QTransform())
-        self.scene.removeItem(item)
-        super().mouseDoubleClickEvent(event)
+        # hcenter | top   36
+        # hcenter | bottom 68
+        # hcenter | vcenter 132
+        self.setAlignment(Qt.AlignVCenter)
+        print(int(self.alignment()))
 
 
 if __name__ == '__main__':

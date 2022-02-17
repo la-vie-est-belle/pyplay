@@ -24,6 +24,8 @@ class LabelPropertyWindow(QWidget):
         self.alignTopBtn = QPushButton()
         self.alignVCenterBtn = QPushButton()
         self.alignBottomBtn = QPushButton()
+        self.hAlignBtnList = [self.alignLeftBtn, self.alignHCenterBtn, self.alignRightBtn]
+        self.vAlignBtnList = [self.alignTopBtn, self.alignVCenterBtn, self.alignBottomBtn]
 
         self.fontEdit = FontEdit()
         self.colorEdit = ColorEdit()
@@ -46,8 +48,8 @@ class LabelPropertyWindow(QWidget):
         self.posYLineEdit.setValidator(QRegExpValidator(QRegExp('-?[0-9]+')))
 
         self.textEdit.setText('Label')
-
         self.textEdit.setPlaceholderText('请输入文本内容')
+
         self.alignLeftBtn.setIcon(QIcon(getImagePath('alignLeft.png')))
         self.alignHCenterBtn.setIcon(QIcon(getImagePath('alignHCenter.png')))
         self.alignRightBtn.setIcon(QIcon(getImagePath('alignRight.png')))
@@ -55,7 +57,24 @@ class LabelPropertyWindow(QWidget):
         self.alignVCenterBtn.setIcon(QIcon(getImagePath('alignVCenter.png')))
         self.alignBottomBtn.setIcon(QIcon(getImagePath('alignBottom.png')))
 
+        self.alignLeftBtn.setProperty('alignment', Qt.AlignLeft)
+        self.alignHCenterBtn.setProperty('alignment', Qt.AlignHCenter)
+        self.alignRightBtn.setProperty('alignment', Qt.AlignRight)
+        self.alignTopBtn.setProperty('alignment', Qt.AlignTop)
+        self.alignVCenterBtn.setProperty('alignment', Qt.AlignVCenter)
+        self.alignBottomBtn.setProperty('alignment', Qt.AlignBottom)
+
+        self.alignLeftBtn.setEnabled(False)
+        self.alignVCenterBtn.setEnabled(False)
+
     def initSignals(self):
+        self.alignLeftBtn.clicked.connect(self.setHorizontalAlignmentBtn)
+        self.alignHCenterBtn.clicked.connect(self.setHorizontalAlignmentBtn)
+        self.alignRightBtn.clicked.connect(self.setHorizontalAlignmentBtn)
+        self.alignTopBtn.clicked.connect(self.setVerticalAlignmentBtn)
+        self.alignVCenterBtn.clicked.connect(self.setVerticalAlignmentBtn)
+        self.alignBottomBtn.clicked.connect(self.setVerticalAlignmentBtn)
+
         self.posXLineEdit.textChanged.connect(lambda: self.updateItemOnScene('posX', self.posXLineEdit.text().strip()))
         self.posYLineEdit.textChanged.connect(lambda: self.updateItemOnScene('posY', self.posYLineEdit.text().strip()))
         self.textEdit.textChanged.connect(lambda: self.updateItemOnScene('text', self.textEdit.toPlainText().strip()))
@@ -111,6 +130,88 @@ class LabelPropertyWindow(QWidget):
         windowLayout.addLayout(layout6)
         windowLayout.addLayout(layout7)
 
+    def setHorizontalAlignmentBtn(self):
+        hBtn = None
+        for btn in self.hAlignBtnList:
+            if btn == self.sender():
+                btn.setEnabled(False)
+                hBtn = btn
+            else:
+                btn.setEnabled(True)
+
+        vBtn = None
+        for btn in self.vAlignBtnList:
+            if not btn.isEnabled():
+                vBtn = btn
+                break
+
+        self.updateItemOnScene('alignment', hBtn.property('alignment')|vBtn.property('alignment'))
+
+    def setVerticalAlignmentBtn(self):
+        vBtn = None
+        for btn in self.vAlignBtnList:
+            if btn == self.sender():
+                btn.setEnabled(False)
+                vBtn = btn
+            else:
+                btn.setEnabled(True)
+
+        hBtn = None
+        for btn in self.hAlignBtnList:
+            if not btn.isEnabled():
+                hBtn = btn
+                break
+
+        self.updateItemOnScene('alignment', hBtn.property('alignment') | vBtn.property('alignment'))
+
+    def setAlignBtnProperty(self, alignment):
+        for btn in self.hAlignBtnList:
+            btn.setEnabled(True)
+        for btn in self.vAlignBtnList:
+            btn.setEnabled(True)
+
+        # if alignment == 1:
+        #     self.alignLeftBtn.setEnabled(False)
+        # elif alignment == 2:
+        #     self.alignRightBtn.setEnabled(False)
+        # elif alignment == 4:
+        #     self.alignHCenterBtn.setEnabled(False)
+        # elif alignment == 32:
+        #     self.alignTopBtn.setEnabled(False)
+        # elif alignment == 64:
+        #     self.alignBottomBtn.setEnabled(False)
+        # elif alignment == 128:
+        #     self.alignVCenterBtn.setEnabled(False)
+
+        # 发过来肯定是水平和垂直两个方向上的
+        if alignment == 33:
+            self.alignLeftBtn.setEnabled(False)
+            self.alignTopBtn.setEnabled(False)
+        elif alignment == 65:
+            self.alignLeftBtn.setEnabled(False)
+            self.alignBottomBtn.setEnabled(False)
+        elif alignment == 129:
+            self.alignLeftBtn.setEnabled(False)
+            self.alignVCenterBtn.setEnabled(False)
+        elif alignment == 34:
+            self.alignRightBtn.setEnabled(False)
+            self.alignTopBtn.setEnabled(False)
+        elif alignment == 66:
+            self.alignRightBtn.setEnabled(False)
+            self.alignBottomBtn.setEnabled(False)
+        elif alignment == 130:
+            self.alignRightBtn.setEnabled(False)
+            self.alignVCenterBtn.setEnabled(False)
+        elif alignment == 36:
+            self.alignHCenterBtn.setEnabled(False)
+            self.alignTopBtn.setEnabled(False)
+        elif alignment == 68:
+            self.alignHCenterBtn.setEnabled(False)
+            self.alignBottomBtn.setEnabled(False)
+        elif alignment == 132:
+            self.alignHCenterBtn.setEnabled(False)
+            self.alignVCenterBtn.setEnabled(False)
+
     def setProperties(self, propertyDict):
         self.propertyDict = propertyDict
         self.UUID = propertyDict['UUID']
@@ -123,6 +224,8 @@ class LabelPropertyWindow(QWidget):
 
         if self.textEdit.toPlainText() != propertyDict['text']:
             self.textEdit.setText(propertyDict['text'])
+
+        self.setAlignBtnProperty(propertyDict['alignment'])
 
         if self.fontEdit.text() != propertyDict['font']:
             self.fontEdit.setText(propertyDict['font'])
@@ -138,6 +241,7 @@ class LabelPropertyWindow(QWidget):
             return
         if property == 'posY' and not value:
             return
+
         self.propertyDict[property] = value
         self.updateItemSignal.emit(self.propertyDict)
 

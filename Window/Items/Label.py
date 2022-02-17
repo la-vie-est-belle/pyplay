@@ -1,9 +1,8 @@
-import re
-import math
-
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
+
+from util import setItemAlignment
 
 
 class Label(QGraphicsProxyWidget):
@@ -64,21 +63,14 @@ class Label(QGraphicsProxyWidget):
 
     def updateProperties(self, propertyDict):
         self.label.move(int(propertyDict['posX']), int(propertyDict['posY']))
-
         self.label.setText(propertyDict['text'])
-        currentFontSize = self.label.font().pointSize()
-        self.label.setMinimumSize(len(propertyDict['text']*currentFontSize),
-                                  (1+len(re.findall('\n', propertyDict['text'])))*(currentFontSize*2))
-
-        # self.label.setAlignment(propertyDict['alignment'])
+        setItemAlignment(self.label, propertyDict['alignment'])
 
         newfontFamily = propertyDict['font'].split(' ; ')[0]
         newfontSize = int(propertyDict['font'].split(' ; ')[1])
         font = QFont(newfontFamily, newfontSize)
-        if newfontSize != self.label.font().pointSize():
-            self.label.setMinimumSize(self.label.width()*math.ceil(newfontSize/currentFontSize),
-                                      self.label.height()*math.ceil(newfontSize/currentFontSize))
         self.label.setFont(font)
+        self.label.adjustSize()
 
         palette = self.label.palette()
         palette.setColor(QPalette.WindowText, QColor(str(propertyDict['color'])))
