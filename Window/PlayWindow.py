@@ -76,9 +76,13 @@ class PlayWindow(QMainWindow):
         self.itemWindow.addSignal.connect(self.sceneWindow.add)
         self.itemWindow.deleteSignal.connect(self.sceneWindow.delete)
         # self.itemWindow.clickSignal.connect(self.sceneWindow.focus)
+        self.itemWindow.showPropertySignal.connect(self.sceneWindow.showProperty)
 
         self.sceneWindow.deleteSignal.connect(self.itemWindow.delete)
         # self.sceneWindow.clickSignal.connect(self.itemWindow.focus)
+        self.sceneWindow.showPropertySignal.connect(self.setProperties)
+
+        self.labelPropertyWindow.updateItemSignal.connect(self.sceneWindow.updateItemOnScene)
 
     def initLayouts(self):
         hLayout1 = QHBoxLayout(self.windowCenterWidget)
@@ -89,6 +93,11 @@ class PlayWindow(QMainWindow):
 
         hLayout3 = QHBoxLayout(self.propertyWindow)
         hLayout3.addWidget(self.labelPropertyWindow)
+
+    def setProperties(self, propertyDict):
+        if propertyDict['type'] == 'Label':
+            self.labelPropertyWindow.show()
+            self.labelPropertyWindow.setProperties(propertyDict)
 
 
 if __name__ == '__main__':

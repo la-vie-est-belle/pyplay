@@ -12,6 +12,7 @@ from Window.Items.Sprite import Sprite
 
 class SceneWindow(QGraphicsView):
     deleteSignal = pyqtSignal(str)
+    showPropertySignal = pyqtSignal(dict)
     # clickSignal = pyqtSignal(list)
 
     def __init__(self):
@@ -51,7 +52,27 @@ class SceneWindow(QGraphicsView):
 
         return parentItem
 
+    def getItemByUUID(self, UUID):
+        for item in self.scene.items():
+            if item.UUID == UUID:
+                return item
+
+    def getItemProperties(self, item):
+        propertyDict = item.getProperties()
+        return propertyDict
+
     """Slots"""
+    def showProperty(self, UUID):
+        item = self.getItemByUUID(UUID)
+        if item:
+            propertyDict = self.getItemProperties(item)
+            self.showPropertySignal.emit(propertyDict)
+
+    def updateItemOnScene(self, propertyDict):
+        item = self.getItemByUUID(propertyDict['UUID'])
+        if item:
+            item.updateProperties(propertyDict)
+
     # def focus(self, UUIDList):
     #     itemsList = self.scene.items()
     #     for item in itemsList:
@@ -70,7 +91,6 @@ class SceneWindow(QGraphicsView):
         for UUID in deletedItemsUUIDList:
             for item in sceneItemsList:
                 if item.UUID == UUID:
-                    print(UUID)
                     self.scene.removeItem(item)
                     break
 
@@ -120,6 +140,9 @@ class SceneWindow(QGraphicsView):
         return sprite
 
     """Events"""
+    def mousePressEvent(self, event):
+        super(SceneWindow, self).mousePressEvent(event)
+
     # mousePressEvent有个多选bug，所以改为用mouseReleaseEvent
     # def mousePressEvent(self, event):
     #     super(SceneWindow, self).mousePressEvent(event)
@@ -137,6 +160,13 @@ class SceneWindow(QGraphicsView):
 
     # def paintEvent(self, event):
     #     super(SceneWindow, self).paintEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        super(SceneWindow, self).mouseReleaseEvent(event)
+        item = self.scene.itemAt(event.pos(), QTransform())
+        if item:
+            propertyDict = self.getItemProperties(item)
+            self.showPropertySignal.emit(propertyDict)
 
     def resizeEvent(self, event):
         super(SceneWindow, self).resizeEvent(event)

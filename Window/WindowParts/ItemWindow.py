@@ -12,6 +12,7 @@ class ItemWindow(QWidget):
     addSignal = pyqtSignal(str, str, str)
     deleteSignal = pyqtSignal(list)
     clickSignal = pyqtSignal(list)
+    showPropertySignal = pyqtSignal(str)
 
     def __init__(self):
         super(ItemWindow, self).__init__()
@@ -209,7 +210,8 @@ class TreeView(QTreeView):
 
     """Slots"""
     def showProperty(self, modelIndex):
-        ...
+        item = self.standardItemModel.itemFromIndex(modelIndex)
+        self.parentWindow.showPropertySignal.emit(item.UUID)
 
     def rename(self):
         self.edit(self.clickedIndex)

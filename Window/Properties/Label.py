@@ -7,14 +7,15 @@ from util import getImagePath
 
 
 class LabelPropertyWindow(QWidget):
+    updateItemSignal = pyqtSignal(dict)
+
     def __init__(self):
         super(LabelPropertyWindow, self).__init__()
-        # 位置、大小、内容、对齐方式、字体、颜色
+        self.UUID = ''
+        self.propertyDict = {}
 
-        self.xPosLineEdit = QLineEdit()
-        self.yPosLineEdit = QLineEdit()
-        self.xScaleLineEdit = QLineEdit()
-        self.yScaleLineEdit = QLineEdit()
+        self.posXLineEdit = QLineEdit()
+        self.posYLineEdit = QLineEdit()
         self.textEdit = QTextEdit()
 
         self.alignLeftBtn = QPushButton()
@@ -39,11 +40,14 @@ class LabelPropertyWindow(QWidget):
         ...
 
     def initWidgets(self):
-        self.xScaleLineEdit.setText('1')
-        self.yScaleLineEdit.setText('1')
+        self.posXLineEdit.setText('0')
+        self.posYLineEdit.setText('0')
+        self.posXLineEdit.setValidator(QRegExpValidator(QRegExp('-?[0-9]+')))
+        self.posYLineEdit.setValidator(QRegExpValidator(QRegExp('-?[0-9]+')))
+
+        self.textEdit.setText('Label')
 
         self.textEdit.setPlaceholderText('请输入文本内容')
-
         self.alignLeftBtn.setIcon(QIcon(getImagePath('alignLeft.png')))
         self.alignHCenterBtn.setIcon(QIcon(getImagePath('alignHCenter.png')))
         self.alignRightBtn.setIcon(QIcon(getImagePath('alignRight.png')))
@@ -52,24 +56,27 @@ class LabelPropertyWindow(QWidget):
         self.alignBottomBtn.setIcon(QIcon(getImagePath('alignBottom.png')))
 
     def initSignals(self):
-        ...
+        self.posXLineEdit.textChanged.connect(lambda: self.updateItemOnScene('posX', self.posXLineEdit.text().strip()))
+        self.posYLineEdit.textChanged.connect(lambda: self.updateItemOnScene('posY', self.posYLineEdit.text().strip()))
+        self.textEdit.textChanged.connect(lambda: self.updateItemOnScene('text', self.textEdit.toPlainText().strip()))
+        self.fontEdit.textChanged.connect(lambda: self.updateItemOnScene('font', self.fontEdit.text().strip()))
 
     def initLayouts(self):
         layout1 = QHBoxLayout()
         layout1.addWidget(QLabel('位置：'))
         layout1.addWidget(QLabel('x:'))
-        layout1.addWidget(self.xPosLineEdit)
+        layout1.addWidget(self.posXLineEdit)
         layout1.addStretch()
         layout1.addWidget(QLabel('y:'))
-        layout1.addWidget(self.yPosLineEdit)
+        layout1.addWidget(self.posYLineEdit)
 
-        layout2 = QHBoxLayout()
-        layout2.addWidget(QLabel('缩放：'))
-        layout2.addWidget(QLabel('x:'))
-        layout2.addWidget(self.xScaleLineEdit)
-        layout2.addStretch()
-        layout2.addWidget(QLabel('y:'))
-        layout2.addWidget(self.yScaleLineEdit)
+        # layout2 = QHBoxLayout()
+        # layout2.addWidget(QLabel('缩放：'))
+        # layout2.addWidget(QLabel('x:'))
+        # layout2.addWidget(self.xScaleLineEdit)
+        # layout2.addStretch()
+        # layout2.addWidget(QLabel('y:'))
+        # layout2.addWidget(self.yScaleLineEdit)
 
         layout3 = QVBoxLayout()
         layout3.addWidget(QLabel('文本：'))
@@ -97,12 +104,42 @@ class LabelPropertyWindow(QWidget):
 
         windowLayout = QVBoxLayout(self)
         windowLayout.addLayout(layout1)
-        windowLayout.addLayout(layout2)
+        # windowLayout.addLayout(layout2)
         windowLayout.addLayout(layout3)
         windowLayout.addLayout(layout4)
         windowLayout.addLayout(layout5)
         windowLayout.addLayout(layout6)
         windowLayout.addLayout(layout7)
+
+    def setProperties(self, propertyDict):
+        self.propertyDict = propertyDict
+        self.UUID = propertyDict['UUID']
+
+        if self.posXLineEdit.text() != propertyDict['posX']:
+            self.posXLineEdit.setText(propertyDict['posX'])
+
+        if self.posYLineEdit.text() != propertyDict['posY']:
+            self.posYLineEdit.setText(propertyDict['posY'])
+
+        if self.textEdit.toPlainText() != propertyDict['text']:
+            self.textEdit.setText(propertyDict['text'])
+
+        if self.fontEdit.text() != propertyDict['font']:
+            self.fontEdit.setText(propertyDict['font'])
+
+        if self.colorEdit.toolTip() != propertyDict['color']:
+            palette = self.colorEdit.palette()
+            palette.setColor(QPalette.Base, QColor(propertyDict['color']))
+            self.colorEdit.setPalette(palette)
+            self.colorEdit.setToolTip(propertyDict['color'])
+
+    def updateItemOnScene(self, property, value):
+        if property == 'posX' and not value:
+            return
+        if property == 'posY' and not value:
+            return
+        self.propertyDict[property] = value
+        self.updateItemSignal.emit(self.propertyDict)
 
 
 class FontEdit(QLineEdit):
@@ -115,7 +152,7 @@ class FontEdit(QLineEdit):
         super(FontEdit, self).mousePressEvent(event)
         font, ok = QFontDialog.getFont()
         if ok:
-            self.setText(f'{font.family()} {font.pointSize()}')
+            self.setText(f'{font.family()} ; {font.pointSize()}')
 
 
 class ColorEdit(QLineEdit):

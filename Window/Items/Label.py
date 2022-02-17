@@ -1,3 +1,6 @@
+import re
+import math
+
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
@@ -16,6 +19,9 @@ class Label(QGraphicsProxyWidget):
 
         self.main()
 
+    def __str__(self):
+        return 'Label'
+
     def main(self):
         self.initWidgets()
         self.initSignals()
@@ -32,6 +38,17 @@ class Label(QGraphicsProxyWidget):
     def initSignals(self):
         ...
 
+    def getProperties(self):
+        propertyDict = {'type': 'Label',
+                        'UUID': self.UUID,
+                        'posX': str(self.label.pos().x()),
+                        'posY': str(self.label.pos().y()),
+                        'text': self.label.text(),
+                        'alignment': int(self.label.alignment()),
+                        'font': f'{self.label.font().family()} ; {self.label.font().pointSize()}',
+                        'color': self.label.palette().color(QPalette.WindowText).name()}
+        return propertyDict
+
     """Slots"""
     def delete(self):
         choice = QMessageBox.question(self.scene().views()[0], '删除', '确定要删除吗？', QMessageBox.Yes | QMessageBox.No)
@@ -44,6 +61,28 @@ class Label(QGraphicsProxyWidget):
 
         self.deleteLater()
         self.deleteSignal.emit(self.UUID)
+
+    def updateProperties(self, propertyDict):
+        self.label.move(int(propertyDict['posX']), int(propertyDict['posY']))
+
+        self.label.setText(propertyDict['text'])
+        currentFontSize = self.label.font().pointSize()
+        self.label.setMinimumSize(len(propertyDict['text']*currentFontSize),
+                                  (1+len(re.findall('\n', propertyDict['text'])))*(currentFontSize*2))
+
+        # self.label.setAlignment(propertyDict['alignment'])
+
+        newfontFamily = propertyDict['font'].split(' ; ')[0]
+        newfontSize = int(propertyDict['font'].split(' ; ')[1])
+        font = QFont(newfontFamily, newfontSize)
+        if newfontSize != self.label.font().pointSize():
+            self.label.setMinimumSize(self.label.width()*math.ceil(newfontSize/currentFontSize),
+                                      self.label.height()*math.ceil(newfontSize/currentFontSize))
+        self.label.setFont(font)
+
+        palette = self.label.palette()
+        palette.setColor(QPalette.WindowText, QColor(str(propertyDict['color'])))
+        self.label.setPalette(palette)
 
     """Events"""
     def contextMenuEvent(self, event):
