@@ -12,7 +12,7 @@ class ItemWindow(QWidget):
     addSignal = pyqtSignal(str, str, str)
     deleteSignal = pyqtSignal(list)
     clickSignal = pyqtSignal(list)
-    showPropertySignal = pyqtSignal(str)
+    showPropertyWindowSignal = pyqtSignal(str)
 
     def __init__(self):
         super(ItemWindow, self).__init__()
@@ -65,16 +65,18 @@ class ItemWindow(QWidget):
             self.searchListView.hide()
             self.itemTreeView.show()
 
-    def delete(self, UUID):
+    def delete(self, deletedUUIDList):
         # deleteItemInStructureFile(self.itemTreeView.itemStructureDict, UUID)
-        itemList = self.itemTreeView.getAllItems()
-        for item in itemList:
-            if item.UUID == UUID:
-                if item.parent():
-                    item.parent().removeRow(item.row())
-                else:
-                    self.itemTreeView.standardItemModel.removeRow(item.row())
-                break
+        # 优化！！！
+        for UUID in deletedUUIDList:
+            itemList = self.itemTreeView.getAllItems()
+            for item in itemList:
+                if item.UUID == UUID:
+                    if item.parent():
+                        item.parent().removeRow(item.row())
+                    else:
+                        self.itemTreeView.standardItemModel.removeRow(item.row())
+                    break
 
         updateItemStructureFile(self.itemTreeView.itemStructureDict,
                                 self.itemTreeView.standardItemModel)
@@ -180,7 +182,7 @@ class TreeView(QTreeView):
         self.setItemDelegate(self.treeViewDelegate)
 
     def initSignals(self):
-        self.clicked.connect(self.showProperty)
+        self.clicked.connect(self.showPropertyWindow)
 
         self.contextMenu.renameSignal.connect(self.rename)
         self.contextMenu.deleteSignal.connect(self.delete)
@@ -209,9 +211,9 @@ class TreeView(QTreeView):
                     break
 
     """Slots"""
-    def showProperty(self, modelIndex):
+    def showPropertyWindow(self, modelIndex):
         item = self.standardItemModel.itemFromIndex(modelIndex)
-        self.parentWindow.showPropertySignal.emit(item.UUID)
+        self.parentWindow.showPropertyWindowSignal.emit(item.UUID)
 
     def rename(self):
         self.edit(self.clickedIndex)

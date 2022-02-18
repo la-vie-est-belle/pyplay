@@ -6,7 +6,7 @@ from util import setItemAlignment
 
 
 class Label(QGraphicsProxyWidget):
-    deleteSignal = pyqtSignal(str)
+    deleteSignal = pyqtSignal(list)
 
     def __init__(self, UUID, parentItem):
         super(Label, self).__init__(parentItem)
@@ -48,20 +48,7 @@ class Label(QGraphicsProxyWidget):
                         'color': self.label.palette().color(QPalette.WindowText).name()}
         return propertyDict
 
-    """Slots"""
-    def delete(self):
-        choice = QMessageBox.question(self.scene().views()[0], '删除', '确定要删除吗？', QMessageBox.Yes | QMessageBox.No)
-        if choice == QMessageBox.No:
-            return
-
-        childItems = self.childItems()
-        for child in childItems:
-            child.scene().removeItem(child)
-
-        self.deleteLater()
-        self.deleteSignal.emit(self.UUID)
-
-    def updateProperties(self, propertyDict):
+    def setProperties(self, propertyDict):
         self.label.move(int(propertyDict['posX']), int(propertyDict['posY']))
         self.label.setText(propertyDict['text'])
         setItemAlignment(self.label, propertyDict['alignment'])
@@ -76,7 +63,27 @@ class Label(QGraphicsProxyWidget):
         palette.setColor(QPalette.WindowText, QColor(str(propertyDict['color'])))
         self.label.setPalette(palette)
 
-    """Events"""
+    def delete(self):
+        choice = QMessageBox.question(self.scene().views()[0], '删除', '确定要删除吗？', QMessageBox.Yes | QMessageBox.No)
+        if choice == QMessageBox.No:
+            return
+
+        deletedUUIDList = [self.UUID]
+        for childItem in self.childItems():
+            deletedUUIDList.append(childItem.UUID)
+            self.getItemChildrenRecursively(deletedUUIDList, childItem)
+
+        for childItem in self.childItems():
+            childItem.scene().removeItem(childItem)
+
+        self.deleteLater()
+        self.deleteSignal.emit(deletedUUIDList)
+
+    def getItemChildrenRecursively(self, deletedUUIDList, parentItem):
+        for childItem in parentItem.childItems():
+            deletedUUIDList.append(childItem.UUID)
+            self.getItemChildrenRecursively(deletedUUIDList, childItem)
+
     def contextMenuEvent(self, event):
         self.contextMenu.execMainMenu(event.screenPos())
 

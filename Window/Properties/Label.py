@@ -68,69 +68,60 @@ class LabelPropertyWindow(QWidget):
         self.alignVCenterBtn.setEnabled(False)
 
     def initSignals(self):
-        self.alignLeftBtn.clicked.connect(self.setHorizontalAlignmentBtn)
-        self.alignHCenterBtn.clicked.connect(self.setHorizontalAlignmentBtn)
-        self.alignRightBtn.clicked.connect(self.setHorizontalAlignmentBtn)
-        self.alignTopBtn.clicked.connect(self.setVerticalAlignmentBtn)
-        self.alignVCenterBtn.clicked.connect(self.setVerticalAlignmentBtn)
-        self.alignBottomBtn.clicked.connect(self.setVerticalAlignmentBtn)
+        self.alignLeftBtn.clicked.connect(self.setHorizontalAlignmentBtnEnabled)
+        self.alignHCenterBtn.clicked.connect(self.setHorizontalAlignmentBtnEnabled)
+        self.alignRightBtn.clicked.connect(self.setHorizontalAlignmentBtnEnabled)
+        self.alignTopBtn.clicked.connect(self.setVerticalAlignmentBtnEnabled)
+        self.alignVCenterBtn.clicked.connect(self.setVerticalAlignmentBtnEnabled)
+        self.alignBottomBtn.clicked.connect(self.setVerticalAlignmentBtnEnabled)
 
-        self.posXLineEdit.textChanged.connect(lambda: self.updateItemOnScene('posX', self.posXLineEdit.text().strip()))
-        self.posYLineEdit.textChanged.connect(lambda: self.updateItemOnScene('posY', self.posYLineEdit.text().strip()))
-        self.textEdit.textChanged.connect(lambda: self.updateItemOnScene('text', self.textEdit.toPlainText().strip()))
-        self.fontEdit.textChanged.connect(lambda: self.updateItemOnScene('font', self.fontEdit.text().strip()))
+        self.posXLineEdit.textChanged.connect(lambda: self.updateItemPropertiesOnScene('posX', self.posXLineEdit.text().strip()))
+        self.posYLineEdit.textChanged.connect(lambda: self.updateItemPropertiesOnScene('posY', self.posYLineEdit.text().strip()))
+        self.textEdit.textChanged.connect(lambda: self.updateItemPropertiesOnScene('text', self.textEdit.toPlainText().strip()))
+        self.fontEdit.textChanged.connect(lambda: self.updateItemPropertiesOnScene('font', self.fontEdit.text().strip()))
 
     def initLayouts(self):
-        layout1 = QHBoxLayout()
-        layout1.addWidget(QLabel('位置：'))
-        layout1.addWidget(QLabel('x:'))
-        layout1.addWidget(self.posXLineEdit)
-        layout1.addStretch()
-        layout1.addWidget(QLabel('y:'))
-        layout1.addWidget(self.posYLineEdit)
+        posHlayout = QHBoxLayout()
+        posHlayout.addWidget(QLabel('位置：'))
+        posHlayout.addWidget(QLabel('x:'))
+        posHlayout.addWidget(self.posXLineEdit)
+        posHlayout.addStretch()
+        posHlayout.addWidget(QLabel('y:'))
+        posHlayout.addWidget(self.posYLineEdit)
 
-        # layout2 = QHBoxLayout()
-        # layout2.addWidget(QLabel('缩放：'))
-        # layout2.addWidget(QLabel('x:'))
-        # layout2.addWidget(self.xScaleLineEdit)
-        # layout2.addStretch()
-        # layout2.addWidget(QLabel('y:'))
-        # layout2.addWidget(self.yScaleLineEdit)
+        textVlayout = QVBoxLayout()
+        textVlayout.addWidget(QLabel('文本：'))
+        textVlayout.addWidget(self.textEdit)
 
-        layout3 = QVBoxLayout()
-        layout3.addWidget(QLabel('文本：'))
-        layout3.addWidget(self.textEdit)
+        alignBtnHLayout = QHBoxLayout()
+        alignBtnHLayout.addWidget(QLabel('水平对齐：'))
+        alignBtnHLayout.addWidget(self.alignLeftBtn)
+        alignBtnHLayout.addWidget(self.alignHCenterBtn)
+        alignBtnHLayout.addWidget(self.alignRightBtn)
 
-        layout4 = QHBoxLayout()
-        layout4.addWidget(QLabel('水平对齐：'))
-        layout4.addWidget(self.alignLeftBtn)
-        layout4.addWidget(self.alignHCenterBtn)
-        layout4.addWidget(self.alignRightBtn)
+        alignBtnHLayout2 = QHBoxLayout()
+        alignBtnHLayout2.addWidget(QLabel('垂直对齐：'))
+        alignBtnHLayout2.addWidget(self.alignTopBtn)
+        alignBtnHLayout2.addWidget(self.alignVCenterBtn)
+        alignBtnHLayout2.addWidget(self.alignBottomBtn)
 
-        layout5 = QHBoxLayout()
-        layout5.addWidget(QLabel('垂直对齐：'))
-        layout5.addWidget(self.alignTopBtn)
-        layout5.addWidget(self.alignVCenterBtn)
-        layout5.addWidget(self.alignBottomBtn)
+        fontHLayout = QHBoxLayout()
+        fontHLayout.addWidget(QLabel('字体：'))
+        fontHLayout.addWidget(self.fontEdit)
 
-        layout6 = QHBoxLayout()
-        layout6.addWidget(QLabel('字体：'))
-        layout6.addWidget(self.fontEdit)
-
-        layout7 = QHBoxLayout()
-        layout7.addWidget(QLabel('颜色：'))
-        layout7.addWidget(self.colorEdit)
+        colorHLayout = QHBoxLayout()
+        colorHLayout.addWidget(QLabel('颜色：'))
+        colorHLayout.addWidget(self.colorEdit)
 
         windowLayout = QVBoxLayout(self)
-        windowLayout.addLayout(layout1)
-        # windowLayout.addLayout(layout2)
-        windowLayout.addLayout(layout3)
-        windowLayout.addLayout(layout4)
-        windowLayout.addLayout(layout5)
-        windowLayout.addLayout(layout6)
-        windowLayout.addLayout(layout7)
+        windowLayout.addLayout(posHlayout)
+        windowLayout.addLayout(textVlayout)
+        windowLayout.addLayout(alignBtnHLayout)
+        windowLayout.addLayout(alignBtnHLayout2)
+        windowLayout.addLayout(fontHLayout)
+        windowLayout.addLayout(colorHLayout)
 
-    def setHorizontalAlignmentBtn(self):
+    def setHorizontalAlignmentBtnEnabled(self):
         hBtn = None
         for btn in self.hAlignBtnList:
             if btn == self.sender():
@@ -145,9 +136,9 @@ class LabelPropertyWindow(QWidget):
                 vBtn = btn
                 break
 
-        self.updateItemOnScene('alignment', hBtn.property('alignment')|vBtn.property('alignment'))
+        self.updateItemPropertiesOnScene('alignment', hBtn.property('alignment')|vBtn.property('alignment'))
 
-    def setVerticalAlignmentBtn(self):
+    def setVerticalAlignmentBtnEnabled(self):
         vBtn = None
         for btn in self.vAlignBtnList:
             if btn == self.sender():
@@ -162,9 +153,9 @@ class LabelPropertyWindow(QWidget):
                 hBtn = btn
                 break
 
-        self.updateItemOnScene('alignment', hBtn.property('alignment') | vBtn.property('alignment'))
+        self.updateItemPropertiesOnScene('alignment', hBtn.property('alignment') | vBtn.property('alignment'))
 
-    def setAlignBtnProperty(self, alignment):
+    def setAlignBtnEnabled(self, alignment):
         for btn in self.hAlignBtnList:
             btn.setEnabled(True)
         for btn in self.vAlignBtnList:
@@ -183,7 +174,7 @@ class LabelPropertyWindow(QWidget):
         # elif alignment == 128:
         #     self.alignVCenterBtn.setEnabled(False)
 
-        # 发过来肯定是水平和垂直两个方向上的
+        # 从场景中发过来对齐方式肯定是水平和垂直两个方向上一起的
         if alignment == 33:
             self.alignLeftBtn.setEnabled(False)
             self.alignTopBtn.setEnabled(False)
@@ -212,7 +203,7 @@ class LabelPropertyWindow(QWidget):
             self.alignHCenterBtn.setEnabled(False)
             self.alignVCenterBtn.setEnabled(False)
 
-    def setProperties(self, propertyDict):
+    def setPropertyWindowValues(self, propertyDict):
         self.propertyDict = propertyDict
         self.UUID = propertyDict['UUID']
 
@@ -225,7 +216,7 @@ class LabelPropertyWindow(QWidget):
         if self.textEdit.toPlainText() != propertyDict['text']:
             self.textEdit.setText(propertyDict['text'])
 
-        self.setAlignBtnProperty(propertyDict['alignment'])
+        self.setAlignBtnEnabled(propertyDict['alignment'])
 
         if self.fontEdit.text() != propertyDict['font']:
             self.fontEdit.setText(propertyDict['font'])
@@ -236,7 +227,7 @@ class LabelPropertyWindow(QWidget):
             self.colorEdit.setPalette(palette)
             self.colorEdit.setToolTip(propertyDict['color'])
 
-    def updateItemOnScene(self, property, value):
+    def updateItemPropertiesOnScene(self, property, value):
         if property == 'posX' and not value:
             return
         if property == 'posY' and not value:

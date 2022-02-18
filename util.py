@@ -49,6 +49,7 @@ def getStructureRecursively(structureDict, parentItem):
                 break
 
 
+# 当属性窗口调整对齐方式时，场景上的项也调整对齐方式
 def setItemAlignment(item, alignment):
     if alignment == 1:
         item.setAlignment(Qt.AlignLeft)

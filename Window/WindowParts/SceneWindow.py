@@ -11,8 +11,8 @@ from Window.Items.Sprite import Sprite
 
 
 class SceneWindow(QGraphicsView):
-    deleteSignal = pyqtSignal(str)
-    showPropertySignal = pyqtSignal(dict)
+    deleteSignal = pyqtSignal(list)
+    showPropertyWindowSignal = pyqtSignal(dict)
     # clickSignal = pyqtSignal(list)
 
     def __init__(self):
@@ -57,21 +57,17 @@ class SceneWindow(QGraphicsView):
             if item.UUID == UUID:
                 return item
 
-    def getItemProperties(self, item):
-        propertyDict = item.getProperties()
-        return propertyDict
-
     """Slots"""
-    def showProperty(self, UUID):
+    def showPropertyWindow(self, UUID):
         item = self.getItemByUUID(UUID)
         if item:
-            propertyDict = self.getItemProperties(item)
-            self.showPropertySignal.emit(propertyDict)
+            propertyDict = item.getProperties()
+            self.showPropertyWindowSignal.emit(propertyDict)
 
-    def updateItemOnScene(self, propertyDict):
+    def updateItemPropertiesOnScene(self, propertyDict):
         item = self.getItemByUUID(propertyDict['UUID'])
         if item:
-            item.updateProperties(propertyDict)
+            item.setProperties(propertyDict)
 
     # def focus(self, UUIDList):
     #     itemsList = self.scene.items()
@@ -93,6 +89,9 @@ class SceneWindow(QGraphicsView):
                 if item.UUID == UUID:
                     self.scene.removeItem(item)
                     break
+
+        # 隐藏属性窗口
+
 
     def add(self, itemName, UUID, parentUUID):
         # 先找到父项
@@ -121,7 +120,7 @@ class SceneWindow(QGraphicsView):
 
     def makeLabel(self, UUID, parentItem):
         label = Label(UUID, parentItem)
-        label.deleteSignal.connect(lambda: self.deleteSignal.emit(label.UUID))
+        label.deleteSignal.connect(self.deleteSignal.emit)
         return label
 
     def makeLineEdit(self, UUID, parentItem):
@@ -165,8 +164,8 @@ class SceneWindow(QGraphicsView):
         super(SceneWindow, self).mouseReleaseEvent(event)
         item = self.scene.itemAt(event.pos(), QTransform())
         if item:
-            propertyDict = self.getItemProperties(item)
-            self.showPropertySignal.emit(propertyDict)
+            propertyDict = item.getProperties()
+            self.showPropertyWindowSignal.emit(propertyDict)
 
     def resizeEvent(self, event):
         super(SceneWindow, self).resizeEvent(event)

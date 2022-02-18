@@ -76,28 +76,37 @@ class PlayWindow(QMainWindow):
         self.itemWindow.addSignal.connect(self.sceneWindow.add)
         self.itemWindow.deleteSignal.connect(self.sceneWindow.delete)
         # self.itemWindow.clickSignal.connect(self.sceneWindow.focus)
-        self.itemWindow.showPropertySignal.connect(self.sceneWindow.showProperty)
+        self.itemWindow.showPropertyWindowSignal.connect(self.sceneWindow.showPropertyWindow)
+        self.itemWindow.deleteSignal.connect(self.hidePropertyWindow)
 
         self.sceneWindow.deleteSignal.connect(self.itemWindow.delete)
+        self.sceneWindow.deleteSignal.connect(self.hidePropertyWindow)
         # self.sceneWindow.clickSignal.connect(self.itemWindow.focus)
-        self.sceneWindow.showPropertySignal.connect(self.setProperties)
+        self.sceneWindow.showPropertyWindowSignal.connect(self.showPropertyWindow)
 
-        self.labelPropertyWindow.updateItemSignal.connect(self.sceneWindow.updateItemOnScene)
+        self.labelPropertyWindow.updateItemSignal.connect(self.sceneWindow.updateItemPropertiesOnScene)
 
     def initLayouts(self):
-        hLayout1 = QHBoxLayout(self.windowCenterWidget)
-        hLayout1.addWidget(self.allSplitter)
+        windowHLayout = QHBoxLayout(self.windowCenterWidget)
+        windowHLayout.addWidget(self.allSplitter)
 
-        hLayout2 = QHBoxLayout(self.sceneWindowBase)
-        hLayout2.addWidget(self.sceneWindow)
+        sceneWindowHLayout = QHBoxLayout(self.sceneWindowBase)
+        sceneWindowHLayout.addWidget(self.sceneWindow)
 
-        hLayout3 = QHBoxLayout(self.propertyWindow)
-        hLayout3.addWidget(self.labelPropertyWindow)
+        propertyWindowHLayout = QHBoxLayout(self.propertyWindow)
+        propertyWindowHLayout.addWidget(self.labelPropertyWindow)
 
-    def setProperties(self, propertyDict):
+    def showPropertyWindow(self, propertyDict):
         if propertyDict['type'] == 'Label':
             self.labelPropertyWindow.show()
-            self.labelPropertyWindow.setProperties(propertyDict)
+            self.labelPropertyWindow.setPropertyWindowValues(propertyDict)
+
+    def hidePropertyWindow(self, deletedUUIDList):
+        for UUID in deletedUUIDList:
+            # 这里循环所有属性窗口
+            if self.labelPropertyWindow.UUID == UUID:
+                self.labelPropertyWindow.hide()
+                break
 
 
 if __name__ == '__main__':
