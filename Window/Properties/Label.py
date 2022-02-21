@@ -79,6 +79,7 @@ class LabelPropertyWindow(QWidget):
         self.posYLineEdit.textChanged.connect(lambda: self.updateItemPropertiesOnScene('posY', self.posYLineEdit.text().strip()))
         self.textEdit.textChanged.connect(lambda: self.updateItemPropertiesOnScene('text', self.textEdit.toPlainText().strip()))
         self.fontEdit.textChanged.connect(lambda: self.updateItemPropertiesOnScene('font', self.fontEdit.text().strip()))
+        self.colorEdit.textChanged.connect(lambda: self.updateItemPropertiesOnScene('color', self.colorEdit.text().strip()))
 
     def initLayouts(self):
         posHlayout = QHBoxLayout()
@@ -262,6 +263,7 @@ class ColorEdit(QLineEdit):
         if color.isValid():
             self.setPlaceholderText('')
             self.setToolTip(color.name())
+            self.setText(color.name())
 
             palette = self.palette()
             palette.setColor(QPalette.Base, color)

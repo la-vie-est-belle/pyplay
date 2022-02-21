@@ -12,9 +12,11 @@ class Slider(QGraphicsProxyWidget):
         self.startPos = QPoint()
 
         self.slider = QSlider(Qt.Horizontal)
-        self.contextMenu = ContextMenu(self)
 
         self.main()
+
+    def __str__(self):
+        return 'Slider'
 
     def main(self):
         self.initWidgets()
@@ -24,29 +26,47 @@ class Slider(QGraphicsProxyWidget):
         self.setWidget(self.slider)
         self.slider.setAttribute(Qt.WA_TranslucentBackground)
 
-        # palette = self.palette()
-        # palette.setColor(QPalette.Window, QColor(0, 105, 255, 128))
-        # self.setPalette(palette)
+        # 选中时的效果
+        palette = self.palette()
+        palette.setColor(QPalette.Background, QColor(255, 255, 255, 80))
+        self.setPalette(palette)
 
     def initSignals(self):
         ...
 
-    """Slots"""
+    def getProperties(self):
+        propertyDict = {
+                        'type': 'Slider',
+                        'UUID': self.UUID,
+                        'posX': str(self.slider.pos().x()),
+                        'posY': str(self.slider.pos().y()),
+                        'value': self.slider.value(),
+                        'orientation': self.slider.orientation(),
+                       }
+        return propertyDict
+
+    def setProperties(self, propertyDict):
+        self.slider.move(int(propertyDict['posX']), int(propertyDict['posY']))
+
+        # newfontFamily = propertyDict['font'].split(' ; ')[0]
+        # newfontSize = int(propertyDict['font'].split(' ; ')[1])
+        # font = QFont(newfontFamily, newfontSize)
+        # self.label.setFont(font)
+        # self.label.adjustSize()
+
+    def setSelected(self, isSelected):
+        if isSelected:
+            self.setAutoFillBackground(True)
+        else:
+            self.setAutoFillBackground(False)
+
     def delete(self):
         choice = QMessageBox.question(self.scene().views()[0], '删除', '确定要删除吗？', QMessageBox.Yes | QMessageBox.No)
         if choice == QMessageBox.No:
             return
 
-        childItems = self.childItems()
-        for child in childItems:
-            child.scene().removeItem(child)
-
-        self.deleteLater()
+        self.scene().removeItem(self)
         self.deleteSignal.emit(self.UUID)
-
-    """Events"""
-    def contextMenuEvent(self, event):
-        self.contextMenu.execMainMenu(event.screenPos())
 
     def grabMouseEvent(self, event):
         super(Slider, self).grabMouseEvent(event)
@@ -70,29 +90,3 @@ class Slider(QGraphicsProxyWidget):
     def mouseReleaseEvent(self, event):
         super(Slider, self).mouseMoveEvent(event)
         self.startPos = QPoint()
-
-
-class ContextMenu(QObject):
-    deleteSignal = pyqtSignal()
-
-    def __init__(self, widget):
-        super(ContextMenu, self).__init__()
-        self.widget = widget
-        self.mainMenu = QMenu()
-
-        self.deleteAction = QAction('删除', self.mainMenu)
-
-        self.main()
-
-    def main(self):
-        self.initSignals()
-        self.setMainMenu()
-
-    def initSignals(self):
-        self.deleteAction.triggered.connect(self.widget.delete)
-
-    def setMainMenu(self):
-        self.mainMenu.addAction(self.deleteAction)
-
-    def execMainMenu(self, pos):
-        self.mainMenu.exec(pos)

@@ -133,7 +133,7 @@ class SceneWindow(QGraphicsView):
 
     def makeSlider(self, UUID, parentItem):
         slider = Slider(UUID, parentItem)
-        slider.deleteSignal.connect(lambda: self.deleteSignal.emit(slider.UUID))
+        slider.deleteSignal.connect(self.deleteSignal.emit)
         return slider
 
     def makeSprite(self, UUID, parentItem):
@@ -142,10 +142,6 @@ class SceneWindow(QGraphicsView):
         return sprite
 
     """Events"""
-    def mousePressEvent(self, event):
-        super(SceneWindow, self).mousePressEvent(event)
-
-    # mousePressEvent有个多选bug，所以改为用mouseReleaseEvent
     def mousePressEvent(self, event):
         super(SceneWindow, self).mousePressEvent(event)
 

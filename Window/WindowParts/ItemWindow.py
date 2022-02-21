@@ -4,7 +4,7 @@ from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 
-from Window.Items.BasicTreeViewItem import BasicTreeViewItem
+from Window.WindowParts.BasicTreeViewItem import BasicTreeViewItem
 from util import updateItemStructureFile
 
 

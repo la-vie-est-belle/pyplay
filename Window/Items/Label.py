@@ -14,7 +14,6 @@ class Label(QGraphicsProxyWidget):
         self.startPos = QPoint()
 
         self.label = QLabel()
-        self.contextMenu = ContextMenu(self)
 
         self.main()
 
@@ -32,25 +31,28 @@ class Label(QGraphicsProxyWidget):
 
         # 选中时的效果
         palette = self.palette()
-        palette.setColor(QPalette.Background, QColor(255, 255, 255))
+        palette.setColor(QPalette.Background, QColor(255, 255, 255, 80))
         self.setPalette(palette)
 
     def initSignals(self):
         ...
 
     def getProperties(self):
-        propertyDict = {'type': 'Label',
+        propertyDict = {
+                        'type': 'Label',
                         'UUID': self.UUID,
                         'posX': str(self.label.pos().x()),
                         'posY': str(self.label.pos().y()),
                         'text': self.label.text(),
                         'alignment': int(self.label.alignment()),
                         'font': f'{self.label.font().family()} ; {self.label.font().pointSize()}',
-                        'color': self.label.palette().color(QPalette.WindowText).name()}
+                        'color': self.label.palette().color(QPalette.WindowText).name()
+                       }
         return propertyDict
 
     def setProperties(self, propertyDict):
         self.label.move(int(propertyDict['posX']), int(propertyDict['posY']))
+
         self.label.setText(propertyDict['text'])
         setItemAlignment(self.label, propertyDict['alignment'])
 
@@ -75,24 +77,8 @@ class Label(QGraphicsProxyWidget):
         if choice == QMessageBox.No:
             return
 
-        # deletedUUIDList = [self.UUID]
-        # for childItem in self.childItems():
-        #     deletedUUIDList.append(childItem.UUID)
-        #     self.getItemChildrenRecursively(deletedUUIDList, childItem)
-
-        # for childItem in self.childItems():
-        #     childItem.scene().removeItem(childItem)
-
         self.scene().removeItem(self)
         self.deleteSignal.emit(self.UUID)
-
-    def getItemChildrenRecursively(self, deletedUUIDList, parentItem):
-        for childItem in parentItem.childItems():
-            deletedUUIDList.append(childItem.UUID)
-            self.getItemChildrenRecursively(deletedUUIDList, childItem)
-
-    def contextMenuEvent(self, event):
-        self.contextMenu.execMainMenu(event.screenPos())
 
     def grabMouseEvent(self, event):
         super(Label, self).grabMouseEvent(event)
@@ -116,29 +102,3 @@ class Label(QGraphicsProxyWidget):
     def mouseReleaseEvent(self, event):
         super(Label, self).mouseMoveEvent(event)
         self.startPos = QPoint()
-
-
-class ContextMenu(QObject):
-    deleteSignal = pyqtSignal()
-
-    def __init__(self, widget):
-        super(ContextMenu, self).__init__()
-        self.widget = widget
-        self.mainMenu = QMenu()
-
-        self.deleteAction = QAction('删除', self.mainMenu)
-
-        self.main()
-
-    def main(self):
-        self.initSignals()
-        self.setMainMenu()
-
-    def initSignals(self):
-        self.deleteAction.triggered.connect(self.widget.delete)
-
-    def setMainMenu(self):
-        self.mainMenu.addAction(self.deleteAction)
-
-    def execMainMenu(self, pos):
-        self.mainMenu.exec(pos)
