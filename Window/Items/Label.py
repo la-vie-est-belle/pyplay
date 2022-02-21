@@ -6,7 +6,7 @@ from util import setItemAlignment
 
 
 class Label(QGraphicsProxyWidget):
-    deleteSignal = pyqtSignal(list)
+    deleteSignal = pyqtSignal(str)
 
     def __init__(self, UUID, parentItem):
         super(Label, self).__init__(parentItem)
@@ -30,9 +30,10 @@ class Label(QGraphicsProxyWidget):
         self.label.setText('Label')
         self.label.setAttribute(Qt.WA_TranslucentBackground)
 
-        # palette = self.palette()
-        # palette.setColor(QPalette.Window, QColor(0, 105, 255, 128))
-        # self.setPalette(palette)
+        # 选中时的效果
+        palette = self.palette()
+        palette.setColor(QPalette.Background, QColor(255, 255, 255))
+        self.setPalette(palette)
 
     def initSignals(self):
         ...
@@ -63,21 +64,27 @@ class Label(QGraphicsProxyWidget):
         palette.setColor(QPalette.WindowText, QColor(str(propertyDict['color'])))
         self.label.setPalette(palette)
 
+    def setSelected(self, isSelected):
+        if isSelected:
+            self.setAutoFillBackground(True)
+        else:
+            self.setAutoFillBackground(False)
+
     def delete(self):
         choice = QMessageBox.question(self.scene().views()[0], '删除', '确定要删除吗？', QMessageBox.Yes | QMessageBox.No)
         if choice == QMessageBox.No:
             return
 
-        deletedUUIDList = [self.UUID]
-        for childItem in self.childItems():
-            deletedUUIDList.append(childItem.UUID)
-            self.getItemChildrenRecursively(deletedUUIDList, childItem)
+        # deletedUUIDList = [self.UUID]
+        # for childItem in self.childItems():
+        #     deletedUUIDList.append(childItem.UUID)
+        #     self.getItemChildrenRecursively(deletedUUIDList, childItem)
 
-        for childItem in self.childItems():
-            childItem.scene().removeItem(childItem)
+        # for childItem in self.childItems():
+        #     childItem.scene().removeItem(childItem)
 
-        self.deleteLater()
-        self.deleteSignal.emit(deletedUUIDList)
+        self.scene().removeItem(self)
+        self.deleteSignal.emit(self.UUID)
 
     def getItemChildrenRecursively(self, deletedUUIDList, parentItem):
         for childItem in parentItem.childItems():

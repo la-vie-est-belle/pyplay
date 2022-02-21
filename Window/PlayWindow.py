@@ -45,7 +45,7 @@ class PlayWindow(QMainWindow):
         self.initLayouts()
 
     def initWindowAttrs(self):
-        self.resize(1360, 800)
+        self.resize(1430, 800)
         self.setWindowTitle('PyPlay')
         self.setCentralWidget(self.windowCenterWidget)
 
@@ -70,18 +70,18 @@ class PlayWindow(QMainWindow):
         self.allSplitter.addWidget(self.leftSplitter)
         self.allSplitter.addWidget(self.centerSplitter)
         self.allSplitter.addWidget(self.rightTab)
-        self.allSplitter.setSizes([280, 800, 280])
+        self.allSplitter.setSizes([280, 800, 350])
 
     def initSignals(self):
         self.itemWindow.addSignal.connect(self.sceneWindow.add)
         self.itemWindow.deleteSignal.connect(self.sceneWindow.delete)
-        # self.itemWindow.clickSignal.connect(self.sceneWindow.focus)
+        self.itemWindow.clickSignal.connect(self.sceneWindow.focus)
         self.itemWindow.showPropertyWindowSignal.connect(self.sceneWindow.showPropertyWindow)
         self.itemWindow.deleteSignal.connect(self.hidePropertyWindow)
 
         self.sceneWindow.deleteSignal.connect(self.itemWindow.delete)
         self.sceneWindow.deleteSignal.connect(self.hidePropertyWindow)
-        # self.sceneWindow.clickSignal.connect(self.itemWindow.focus)
+        self.sceneWindow.clickSignal.connect(self.itemWindow.focus)
         self.sceneWindow.showPropertyWindowSignal.connect(self.showPropertyWindow)
 
         self.labelPropertyWindow.updateItemSignal.connect(self.sceneWindow.updateItemPropertiesOnScene)
@@ -101,12 +101,16 @@ class PlayWindow(QMainWindow):
             self.labelPropertyWindow.show()
             self.labelPropertyWindow.setPropertyWindowValues(propertyDict)
 
-    def hidePropertyWindow(self, deletedUUIDList):
-        for UUID in deletedUUIDList:
+    def hidePropertyWindow(self):
+        scene = self.sceneWindow.currentScene()
+        for item in scene.items():
             # 这里循环所有属性窗口
-            if self.labelPropertyWindow.UUID == UUID:
-                self.labelPropertyWindow.hide()
+            # 如果有一样的UUID，说明当点点击的项没有被删除
+            # 如果项被删除了的话，那么肯定是匹配不到UUID的
+            if self.labelPropertyWindow.UUID == item.UUID:
                 break
+        else:
+            self.labelPropertyWindow.hide()
 
 
 if __name__ == '__main__':

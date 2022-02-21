@@ -65,38 +65,37 @@ class ItemWindow(QWidget):
             self.searchListView.hide()
             self.itemTreeView.show()
 
-    def delete(self, deletedUUIDList):
+    def delete(self, UUID):
         # deleteItemInStructureFile(self.itemTreeView.itemStructureDict, UUID)
         # 优化！！！
-        for UUID in deletedUUIDList:
-            itemList = self.itemTreeView.getAllItems()
-            for item in itemList:
-                if item.UUID == UUID:
-                    if item.parent():
-                        item.parent().removeRow(item.row())
-                    else:
-                        self.itemTreeView.standardItemModel.removeRow(item.row())
-                    break
+        itemList = self.itemTreeView.getAllItems()
+        for item in itemList:
+            if item.UUID == UUID:
+                if item.parent():
+                    item.parent().removeRow(item.row())
+                else:
+                    self.itemTreeView.standardItemModel.removeRow(item.row())
+                break
 
         updateItemStructureFile(self.itemTreeView.itemStructureDict,
                                 self.itemTreeView.standardItemModel)
 
-    # def focus(self, UUIDList):
-    #     self.itemTreeView.clearSelection()
-    #
-    #     itemsList = self.itemTreeView.getAllItems()
-    #     for item in itemsList:
-    #         item.setForeground(QColor(0, 0, 0, 255))
-    #         item.setBackground(QColor(0, 0, 0, 0))
-    #
-    #     for UUID in UUIDList:
-    #         for item in itemsList:
-    #             if item.UUID == UUID:
-    #                 item.setForeground(QColor(255, 255, 255, 255))
-    #                 item.setBackground(QColor(0, 105, 217, 255))
-    #                 break
-    #
-    #     self.update()
+    def focus(self, UUIDList):
+        self.itemTreeView.clearSelection()
+
+        itemsList = self.itemTreeView.getAllItems()
+        for item in itemsList:
+            item.setForeground(QColor(0, 0, 0, 255))
+            item.setBackground(QColor(0, 0, 0, 0))
+
+        for UUID in UUIDList:
+            for item in itemsList:
+                if item.UUID == UUID:
+                    item.setForeground(QColor(255, 255, 255, 255))
+                    item.setBackground(QColor(0, 105, 217, 255))
+                    break
+
+        self.update()
 
 
 class ListView(QListView):
@@ -351,8 +350,8 @@ class TreeView(QTreeView):
             item.setBackground(QColor(0, 0, 0, 0))
 
         UUIDList = []
-        for index in self.selectedIndexes():
-            if index.isValid():
+        if self.clickedIndex.isValid():
+            for index in self.selectedIndexes():
                 item = self.standardItemModel.itemFromIndex(index)
                 UUIDList.append(item.UUID)
 

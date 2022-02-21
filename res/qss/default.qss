@@ -10,3 +10,8 @@ QTabWidget::tab-bar{
 QTabWidget::pane {
     background-color: rgba(0, 0, 0, 0);
 }
+
+QTreeView::item:hover {
+    background-color: rgba(0, 105, 217, 255);
+    color: rgba(255, 255, 255, 255);
+}

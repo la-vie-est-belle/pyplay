@@ -11,9 +11,9 @@ from Window.Items.Sprite import Sprite
 
 
 class SceneWindow(QGraphicsView):
-    deleteSignal = pyqtSignal(list)
+    deleteSignal = pyqtSignal(str)
     showPropertyWindowSignal = pyqtSignal(dict)
-    # clickSignal = pyqtSignal(list)
+    clickSignal = pyqtSignal(list)
 
     def __init__(self):
         super(SceneWindow, self).__init__()
@@ -24,6 +24,9 @@ class SceneWindow(QGraphicsView):
 
         brush = QBrush(QColor(0, 210, 0))
         self.scene.setBackgroundBrush(brush)
+
+        self.isCtrlPressed = False
+        self.selectedItems = []
 
         self.main()
 
@@ -58,6 +61,9 @@ class SceneWindow(QGraphicsView):
                 return item
 
     """Slots"""
+    def currentScene(self):
+        return self.scene
+
     def showPropertyWindow(self, UUID):
         item = self.getItemByUUID(UUID)
         if item:
@@ -69,18 +75,18 @@ class SceneWindow(QGraphicsView):
         if item:
             item.setProperties(propertyDict)
 
-    # def focus(self, UUIDList):
-    #     itemsList = self.scene.items()
-    #     for item in itemsList:
-    #         item.setSelected(False)
-    #
-    #     for UUID in UUIDList:
-    #         for item in itemsList:
-    #             if item.UUID == UUID:
-    #                 item.setSelected(True)
-    #                 break
-    #
-    #     self.update()
+    def focus(self, UUIDList):
+        itemsList = self.scene.items()
+        for item in itemsList:
+            item.setSelected(False)
+
+        for UUID in UUIDList:
+            for item in itemsList:
+                if item.UUID == UUID:
+                    item.setSelected(True)
+                    break
+
+        self.update()
 
     def delete(self, deletedItemsUUIDList):
         sceneItemsList = self.scene.items()
@@ -89,9 +95,6 @@ class SceneWindow(QGraphicsView):
                 if item.UUID == UUID:
                     self.scene.removeItem(item)
                     break
-
-        # 隐藏属性窗口
-
 
     def add(self, itemName, UUID, parentUUID):
         # 先找到父项
@@ -143,22 +146,25 @@ class SceneWindow(QGraphicsView):
         super(SceneWindow, self).mousePressEvent(event)
 
     # mousePressEvent有个多选bug，所以改为用mouseReleaseEvent
-    # def mousePressEvent(self, event):
-    #     super(SceneWindow, self).mousePressEvent(event)
-    #     # UUIDList = []
-    #     # for item in self.scene.selectedItems():
-    #     #     UUIDList.append(item.UUID)
-    #     #
-    #     # print(self.scene.items())
-    #     # print(UUIDList)
-    #     # if UUIDList:
-    #     #     self.clickSignal.emit(UUIDList)
-    #     for item in self.scene.items():
-    #         if item.hasFocus():
-    #             print(item)
+    def mousePressEvent(self, event):
+        super(SceneWindow, self).mousePressEvent(event)
 
-    # def paintEvent(self, event):
-    #     super(SceneWindow, self).paintEvent(event)
+        for item in self.scene.items():
+            item.setSelected(False)
+
+        item = self.scene.itemAt(event.pos(), QTransform())
+        UUIDList = []
+        if item:
+            if self.isCtrlPressed:
+                self.selectedItems.append(item)
+            else:
+                self.selectedItems = [item]
+
+            for item in self.selectedItems:
+                item.setSelected(True)
+                UUIDList.append(item.UUID)
+                
+        self.clickSignal.emit(UUIDList)
 
     def mouseReleaseEvent(self, event):
         super(SceneWindow, self).mouseReleaseEvent(event)
@@ -170,6 +176,16 @@ class SceneWindow(QGraphicsView):
     def resizeEvent(self, event):
         super(SceneWindow, self).resizeEvent(event)
         self.scene.setSceneRect(0, 0, self.width(), self.height())
+
+    def keyPressEvent(self, event):
+        super(SceneWindow, self).keyPressEvent(event)
+        if event.key() == Qt.Key_Control:
+            self.isCtrlPressed = True
+
+    def keyReleaseEvent(self, event):
+        super(SceneWindow, self).keyReleaseEvent(event)
+        if event.key() == Qt.Key_Control:
+            self.isCtrlPressed = False
 
 
 if __name__ == '__main__':
