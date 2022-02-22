@@ -40,19 +40,24 @@ class Slider(QGraphicsProxyWidget):
                         'UUID': self.UUID,
                         'posX': str(self.slider.pos().x()),
                         'posY': str(self.slider.pos().y()),
-                        'value': self.slider.value(),
+                        'width': str(self.slider.width()),
+                        'height': str(self.slider.height()),
+                        'value': str(self.slider.value()),
+                        'step': str(self.slider.singleStep()),
+                        'min': str(self.slider.minimum()),
+                        'max': str(self.slider.maximum()),
                         'orientation': self.slider.orientation(),
                        }
         return propertyDict
 
     def setProperties(self, propertyDict):
         self.slider.move(int(propertyDict['posX']), int(propertyDict['posY']))
-
-        # newfontFamily = propertyDict['font'].split(' ; ')[0]
-        # newfontSize = int(propertyDict['font'].split(' ; ')[1])
-        # font = QFont(newfontFamily, newfontSize)
-        # self.label.setFont(font)
-        # self.label.adjustSize()
+        self.slider.resize(int(propertyDict['width']), int(propertyDict['height']))
+        self.slider.setValue(int(propertyDict['value']))
+        self.slider.setMinimum(int(propertyDict['min']))
+        self.slider.setMaximum(int(propertyDict['max']))
+        self.slider.setSingleStep(int(propertyDict['step']))
+        self.slider.setOrientation(propertyDict['orientation'])
 
     def setSelected(self, isSelected):
         if isSelected:

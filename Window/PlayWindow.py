@@ -10,6 +10,7 @@ from WindowParts.SceneWindow import SceneWindow
 from WindowParts.SceneWindowBase import SceneWindowBase
 
 from Properties.Label import LabelPropertyWindow
+from Properties.Slider import SliderPropertyWindow
 
 
 class PlayWindow(QMainWindow):
@@ -33,6 +34,8 @@ class PlayWindow(QMainWindow):
         self.propertyWindow = QWidget()
 
         self.labelPropertyWindow = LabelPropertyWindow()
+        self.sliderPropertyWindow = SliderPropertyWindow()
+        self.propertyWindowList = [self.labelPropertyWindow, self.sliderPropertyWindow]
 
         self.windowCenterWidget = QWidget()
 
@@ -51,6 +54,7 @@ class PlayWindow(QMainWindow):
 
     def initWidgets(self):
         self.labelPropertyWindow.hide()
+        self.sliderPropertyWindow.hide()
         
         self.leftTopTab.addTab(self.itemWindow, '层级窗口')
         self.leftBottomTab.addTab(self.assetWindow, '资源窗口')
@@ -85,6 +89,7 @@ class PlayWindow(QMainWindow):
         self.sceneWindow.showPropertyWindowSignal.connect(self.showPropertyWindow)
 
         self.labelPropertyWindow.updateItemSignal.connect(self.sceneWindow.updateItemPropertiesOnScene)
+        self.sliderPropertyWindow.updateItemSignal.connect(self.sceneWindow.updateItemPropertiesOnScene)
 
     def initLayouts(self):
         windowHLayout = QHBoxLayout(self.windowCenterWidget)
@@ -93,13 +98,21 @@ class PlayWindow(QMainWindow):
         sceneWindowHLayout = QHBoxLayout(self.sceneWindowBase)
         sceneWindowHLayout.addWidget(self.sceneWindow)
 
-        propertyWindowHLayout = QHBoxLayout(self.propertyWindow)
-        propertyWindowHLayout.addWidget(self.labelPropertyWindow)
+        propertyWindowVLayout = QVBoxLayout(self.propertyWindow)
+        propertyWindowVLayout.addWidget(self.labelPropertyWindow)
+        propertyWindowVLayout.addWidget(self.sliderPropertyWindow)
 
     def showPropertyWindow(self, propertyDict):
+        for pw in self.propertyWindowList:
+            pw.hide()
+
         if propertyDict['type'] == 'Label':
             self.labelPropertyWindow.show()
             self.labelPropertyWindow.setPropertyWindowValues(propertyDict)
+
+        elif propertyDict['type'] == 'Slider':
+            self.sliderPropertyWindow.show()
+            self.sliderPropertyWindow.setPropertyWindowValues(propertyDict)
 
     def hidePropertyWindow(self):
         scene = self.sceneWindow.currentScene()

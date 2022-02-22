@@ -121,6 +121,7 @@ class LabelPropertyWindow(QWidget):
         windowLayout.addLayout(alignBtnHLayout2)
         windowLayout.addLayout(fontHLayout)
         windowLayout.addLayout(colorHLayout)
+        windowLayout.addStretch()
 
     def setHorizontalAlignmentBtnEnabled(self):
         hBtn = None
@@ -230,8 +231,10 @@ class LabelPropertyWindow(QWidget):
 
     def updateItemPropertiesOnScene(self, property, value):
         if property == 'posX' and not value:
+            self.posXLineEdit.setText('0')
             return
-        if property == 'posY' and not value:
+        elif property == 'posY' and not value:
+            self.posYLineEdit.setText('0')
             return
 
         self.propertyDict[property] = value
